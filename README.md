@@ -39,10 +39,7 @@ demo/
 │   │   ├── components/     # React components
 │   │   └── lib/            # Utilities
 │   └── Dockerfile           # Frontend Dockerfile (for local)
-├── Dockerfile.backend       # Backend Dockerfile (for Koyeb)
-├── Dockerfile.frontend      # Frontend Dockerfile (for Koyeb)
-├── koyeb.backend.yaml       # Koyeb config for backend
-├── koyeb.frontend.yaml      # Koyeb config for frontend
+├── Dockerfile               # Multi-target Dockerfile (for Koyeb)
 ├── docker-compose.yml       # Local development
 ├── docker-compose.prod.yml  # Production deployment
 └── .env.example            # Environment template
@@ -132,7 +129,7 @@ npm run dev
 
 ## Deployment to Koyeb
 
-The project includes root-level Dockerfiles (`Dockerfile.backend` and `Dockerfile.frontend`) that Koyeb can use directly from the repository root.
+The project uses a single `Dockerfile` with a `BUILD_TARGET` build argument to select which service to build (`backend` or `frontend`).
 
 ### 1. Push to GitHub
 
@@ -166,9 +163,13 @@ First, create these secrets in your Koyeb dashboard (Settings > Secrets):
 3. Configure the service:
    - **Name**: `demo-backend`
    - **Builder**: Dockerfile
-   - **Dockerfile location**: `Dockerfile.backend`
    - **Port**: `8080`
-4. Add environment variables:
+4. **IMPORTANT** - Add build argument:
+   | Argument | Value |
+   |----------|-------|
+   | `BUILD_TARGET` | `backend` |
+
+5. Add environment variables:
    | Variable | Type | Value |
    |----------|------|-------|
    | `SPRING_DATASOURCE_URL` | Secret | `spring-datasource-url` |
@@ -182,7 +183,7 @@ First, create these secrets in your Koyeb dashboard (Settings > Secrets):
    | `CORS_ALLOWED_ORIGINS` | Plain | `https://YOUR-FRONTEND.koyeb.app` |
    | `OAUTH2_REDIRECT_URI` | Plain | `https://YOUR-FRONTEND.koyeb.app/auth/callback` |
 
-5. Deploy and note your backend URL (e.g., `https://demo-backend-xxxxx.koyeb.app`)
+6. Deploy and note your backend URL (e.g., `https://demo-backend-xxxxx.koyeb.app`)
 
 ### 4. Deploy Frontend on Koyeb
 
@@ -191,17 +192,17 @@ First, create these secrets in your Koyeb dashboard (Settings > Secrets):
 3. Configure the service:
    - **Name**: `demo-frontend`
    - **Builder**: Dockerfile
-   - **Dockerfile location**: `Dockerfile.frontend`
    - **Port**: `3000`
-4. Add environment variables:
+4. **IMPORTANT** - Add build arguments:
+   | Argument | Value |
+   |----------|-------|
+   | `BUILD_TARGET` | `frontend` |
+   | `NEXT_PUBLIC_API_URL` | `https://YOUR-BACKEND.koyeb.app` |
+
+5. Add environment variables:
    | Variable | Type | Value |
    |----------|------|-------|
    | `NEXT_PUBLIC_API_URL` | Plain | `https://YOUR-BACKEND.koyeb.app` |
-
-5. Add build arguments:
-   | Argument | Value |
-   |----------|-------|
-   | `NEXT_PUBLIC_API_URL` | `https://YOUR-BACKEND.koyeb.app` |
 
 6. Deploy and note your frontend URL
 
@@ -220,41 +221,6 @@ Update the callback URLs in each OAuth2 provider console with your **backend** U
 | Google | `https://your-backend.koyeb.app/login/oauth2/code/google` |
 | GitHub | `https://your-backend.koyeb.app/login/oauth2/code/github` |
 | Microsoft | `https://your-backend.koyeb.app/login/oauth2/code/microsoft` |
-
-### Alternative: Deploy Using Koyeb CLI
-
-```bash
-# Install Koyeb CLI
-curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
-
-# Login
-koyeb login
-
-# Deploy backend (edit koyeb.backend.yaml first with your URLs)
-koyeb service create demo-backend \
-  --git github.com/YOUR_USER/YOUR_REPO \
-  --git-branch main \
-  --git-dockerfile Dockerfile.backend \
-  --port 8080:http \
-  --env "SPRING_DATASOURCE_URL=@spring-datasource-url" \
-  --env "JWT_SECRET=@jwt-secret" \
-  --env "GOOGLE_CLIENT_ID=@google-client-id" \
-  --env "GOOGLE_CLIENT_SECRET=@google-client-secret" \
-  --env "GITHUB_CLIENT_ID=@github-client-id" \
-  --env "GITHUB_CLIENT_SECRET=@github-client-secret" \
-  --env "MICROSOFT_CLIENT_ID=@microsoft-client-id" \
-  --env "MICROSOFT_CLIENT_SECRET=@microsoft-client-secret" \
-  --env "CORS_ALLOWED_ORIGINS=https://YOUR-FRONTEND.koyeb.app" \
-  --env "OAUTH2_REDIRECT_URI=https://YOUR-FRONTEND.koyeb.app/auth/callback"
-
-# Deploy frontend
-koyeb service create demo-frontend \
-  --git github.com/YOUR_USER/YOUR_REPO \
-  --git-branch main \
-  --git-dockerfile Dockerfile.frontend \
-  --port 3000:http \
-  --env "NEXT_PUBLIC_API_URL=https://YOUR-BACKEND.koyeb.app"
-```
 
 ## Security Notes
 
