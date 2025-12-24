@@ -1,10 +1,11 @@
 # Multi-service Dockerfile for Koyeb deployment
 # Use BUILD_TARGET arg to select: "backend" or "frontend"
+# Default is backend
 
 ARG BUILD_TARGET=backend
 
 # ============================================
-# BACKEND BUILD
+# BACKEND BUILD STAGE
 # ============================================
 FROM eclipse-temurin:17-jdk-alpine AS backend-build
 WORKDIR /app
@@ -15,17 +16,20 @@ RUN chmod +x ./mvnw && ./mvnw dependency:go-offline -B
 COPY backend/src src
 RUN ./mvnw package -DskipTests
 
-FROM eclipse-temurin:17-jre-alpine AS backend
+# ============================================
+# BACKEND RUNTIME STAGE
+# ============================================
+FROM eclipse-temurin:17-jre-alpine AS backend-runtime
 WORKDIR /app
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 COPY --from=backend-build /app/target/*.jar app.jar
 RUN chown -R appuser:appgroup /app
 USER appuser
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+CMD ["java", "-jar", "app.jar"]
 
 # ============================================
-# FRONTEND BUILD
+# FRONTEND DEPS STAGE
 # ============================================
 FROM node:20-alpine AS frontend-deps
 RUN apk add --no-cache libc6-compat
@@ -33,6 +37,9 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci || npm install
 
+# ============================================
+# FRONTEND BUILD STAGE
+# ============================================
 FROM node:20-alpine AS frontend-build
 WORKDIR /app
 COPY --from=frontend-deps /app/node_modules ./node_modules
@@ -42,7 +49,10 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-FROM node:20-alpine AS frontend
+# ============================================
+# FRONTEND RUNTIME STAGE
+# ============================================
+FROM node:20-alpine AS frontend-runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -58,6 +68,6 @@ ENV HOSTNAME="0.0.0.0"
 CMD ["node", "server.js"]
 
 # ============================================
-# FINAL STAGE - Select based on BUILD_TARGET
+# FINAL STAGE SELECTOR
 # ============================================
-FROM ${BUILD_TARGET} AS final
+FROM ${BUILD_TARGET}-runtime AS final
