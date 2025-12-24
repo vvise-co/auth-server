@@ -1,7 +1,6 @@
 package com.vvise.demo.security;
 
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,10 +23,16 @@ public class JwtTokenProvider {
     private Long accessTokenExpiration;
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+        // Use the secret directly as bytes (UTF-8)
+        // This works with any string secret, including those with special characters
+        byte[] keyBytes = jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        // Ensure the key is at least 256 bits (32 bytes) for HS256
         if (keyBytes.length < 32) {
-            // If the key is too short, use it directly as bytes
-            return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+            // Pad the key if too short (not recommended for production - use a longer secret)
+            byte[] paddedKey = new byte[32];
+            System.arraycopy(keyBytes, 0, paddedKey, 0, keyBytes.length);
+            return Keys.hmacShaKeyFor(paddedKey);
         }
         return Keys.hmacShaKeyFor(keyBytes);
     }
