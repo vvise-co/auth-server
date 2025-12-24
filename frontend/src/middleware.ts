@@ -1,0 +1,55 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// Paths that don't require authentication
+const publicPaths = ['/login', '/auth/callback', '/api/auth/callback'];
+
+// Paths that require authentication
+const protectedPaths = ['/dashboard'];
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Check if the path is public
+  const isPublicPath = publicPaths.some(
+    (path) => pathname === path || pathname.startsWith(path + '/')
+  );
+
+  // Check if the path is protected
+  const isProtectedPath = protectedPaths.some(
+    (path) => pathname === path || pathname.startsWith(path + '/')
+  );
+
+  // Get auth tokens from cookies
+  const accessToken = request.cookies.get('access_token')?.value;
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+
+  const isAuthenticated = accessToken && refreshToken;
+
+  // Redirect authenticated users away from login page
+  if (isPublicPath && isAuthenticated && pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  // Redirect unauthenticated users to login
+  if (isProtectedPath && !isAuthenticated) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+  ],
+};
