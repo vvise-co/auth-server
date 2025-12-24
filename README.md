@@ -32,13 +32,17 @@ demo/
 │   │       ├── repository/  # Data repositories
 │   │       ├── service/     # Business logic
 │   │       └── security/    # JWT, OAuth2 handlers
-│   └── Dockerfile
+│   └── Dockerfile           # Backend Dockerfile (for local)
 ├── frontend/                # Next.js application
 │   ├── src/
 │   │   ├── app/            # App Router pages
 │   │   ├── components/     # React components
 │   │   └── lib/            # Utilities
-│   └── Dockerfile
+│   └── Dockerfile           # Frontend Dockerfile (for local)
+├── Dockerfile.backend       # Backend Dockerfile (for Koyeb)
+├── Dockerfile.frontend      # Frontend Dockerfile (for Koyeb)
+├── koyeb.backend.yaml       # Koyeb config for backend
+├── koyeb.frontend.yaml      # Koyeb config for frontend
 ├── docker-compose.yml       # Local development
 ├── docker-compose.prod.yml  # Production deployment
 └── .env.example            # Environment template
@@ -128,6 +132,8 @@ npm run dev
 
 ## Deployment to Koyeb
 
+The project includes root-level Dockerfiles (`Dockerfile.backend` and `Dockerfile.frontend`) that Koyeb can use directly from the repository root.
+
 ### 1. Push to GitHub
 
 ```bash
@@ -138,28 +144,117 @@ git remote add origin <your-repo-url>
 git push -u origin main
 ```
 
-### 2. Deploy Backend on Koyeb
+### 2. Create Koyeb Secrets
 
-1. Create a new Web Service
-2. Connect to your GitHub repository
-3. Select the `backend` directory
-4. Set environment variables from `.env.example`
-5. Update `CORS_ALLOWED_ORIGINS` with your frontend Koyeb URL
-6. Update `OAUTH2_REDIRECT_URI` with your frontend callback URL
+First, create these secrets in your Koyeb dashboard (Settings > Secrets):
 
-### 3. Deploy Frontend on Koyeb
+| Secret Name | Value |
+|-------------|-------|
+| `spring-datasource-url` | Your PostgreSQL JDBC URL |
+| `jwt-secret` | A strong random string (32+ chars) |
+| `google-client-id` | From Google Cloud Console |
+| `google-client-secret` | From Google Cloud Console |
+| `github-client-id` | From GitHub Developer Settings |
+| `github-client-secret` | From GitHub Developer Settings |
+| `microsoft-client-id` | From Azure Portal |
+| `microsoft-client-secret` | From Azure Portal |
+
+### 3. Deploy Backend on Koyeb
+
+1. Go to Koyeb Dashboard > Create Service > Web Service
+2. Select **GitHub** and connect your repository
+3. Configure the service:
+   - **Name**: `demo-backend`
+   - **Builder**: Dockerfile
+   - **Dockerfile location**: `Dockerfile.backend`
+   - **Port**: `8080`
+4. Add environment variables:
+   | Variable | Type | Value |
+   |----------|------|-------|
+   | `SPRING_DATASOURCE_URL` | Secret | `spring-datasource-url` |
+   | `JWT_SECRET` | Secret | `jwt-secret` |
+   | `GOOGLE_CLIENT_ID` | Secret | `google-client-id` |
+   | `GOOGLE_CLIENT_SECRET` | Secret | `google-client-secret` |
+   | `GITHUB_CLIENT_ID` | Secret | `github-client-id` |
+   | `GITHUB_CLIENT_SECRET` | Secret | `github-client-secret` |
+   | `MICROSOFT_CLIENT_ID` | Secret | `microsoft-client-id` |
+   | `MICROSOFT_CLIENT_SECRET` | Secret | `microsoft-client-secret` |
+   | `CORS_ALLOWED_ORIGINS` | Plain | `https://YOUR-FRONTEND.koyeb.app` |
+   | `OAUTH2_REDIRECT_URI` | Plain | `https://YOUR-FRONTEND.koyeb.app/auth/callback` |
+
+5. Deploy and note your backend URL (e.g., `https://demo-backend-xxxxx.koyeb.app`)
+
+### 4. Deploy Frontend on Koyeb
 
 1. Create another Web Service
-2. Connect to the same repository
-3. Select the `frontend` directory
-4. Set `NEXT_PUBLIC_API_URL` to your backend Koyeb URL
+2. Select the same GitHub repository
+3. Configure the service:
+   - **Name**: `demo-frontend`
+   - **Builder**: Dockerfile
+   - **Dockerfile location**: `Dockerfile.frontend`
+   - **Port**: `3000`
+4. Add environment variables:
+   | Variable | Type | Value |
+   |----------|------|-------|
+   | `NEXT_PUBLIC_API_URL` | Plain | `https://YOUR-BACKEND.koyeb.app` |
 
-### 4. Update OAuth2 Providers
+5. Add build arguments:
+   | Argument | Value |
+   |----------|-------|
+   | `NEXT_PUBLIC_API_URL` | `https://YOUR-BACKEND.koyeb.app` |
 
-Update the callback URLs in each OAuth2 provider console:
-- Google: `https://your-backend.koyeb.app/login/oauth2/code/google`
-- GitHub: `https://your-backend.koyeb.app/login/oauth2/code/github`
-- Microsoft: `https://your-backend.koyeb.app/login/oauth2/code/microsoft`
+6. Deploy and note your frontend URL
+
+### 5. Update Backend CORS Settings
+
+After deploying the frontend, go back to your backend service and update:
+- `CORS_ALLOWED_ORIGINS` → Your actual frontend URL
+- `OAUTH2_REDIRECT_URI` → `https://your-frontend.koyeb.app/auth/callback`
+
+### 6. Update OAuth2 Provider Callback URLs
+
+Update the callback URLs in each OAuth2 provider console with your **backend** URL:
+
+| Provider | Callback URL |
+|----------|--------------|
+| Google | `https://your-backend.koyeb.app/login/oauth2/code/google` |
+| GitHub | `https://your-backend.koyeb.app/login/oauth2/code/github` |
+| Microsoft | `https://your-backend.koyeb.app/login/oauth2/code/microsoft` |
+
+### Alternative: Deploy Using Koyeb CLI
+
+```bash
+# Install Koyeb CLI
+curl -fsSL https://raw.githubusercontent.com/koyeb/koyeb-cli/master/install.sh | sh
+
+# Login
+koyeb login
+
+# Deploy backend (edit koyeb.backend.yaml first with your URLs)
+koyeb service create demo-backend \
+  --git github.com/YOUR_USER/YOUR_REPO \
+  --git-branch main \
+  --git-dockerfile Dockerfile.backend \
+  --port 8080:http \
+  --env "SPRING_DATASOURCE_URL=@spring-datasource-url" \
+  --env "JWT_SECRET=@jwt-secret" \
+  --env "GOOGLE_CLIENT_ID=@google-client-id" \
+  --env "GOOGLE_CLIENT_SECRET=@google-client-secret" \
+  --env "GITHUB_CLIENT_ID=@github-client-id" \
+  --env "GITHUB_CLIENT_SECRET=@github-client-secret" \
+  --env "MICROSOFT_CLIENT_ID=@microsoft-client-id" \
+  --env "MICROSOFT_CLIENT_SECRET=@microsoft-client-secret" \
+  --env "CORS_ALLOWED_ORIGINS=https://YOUR-FRONTEND.koyeb.app" \
+  --env "OAUTH2_REDIRECT_URI=https://YOUR-FRONTEND.koyeb.app/auth/callback"
+
+# Deploy frontend
+koyeb service create demo-frontend \
+  --git github.com/YOUR_USER/YOUR_REPO \
+  --git-branch main \
+  --git-dockerfile Dockerfile.frontend \
+  --port 3000:http \
+  --env "NEXT_PUBLIC_API_URL=https://YOUR-BACKEND.koyeb.app"
+```
 
 ## Security Notes
 
