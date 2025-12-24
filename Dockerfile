@@ -44,6 +44,8 @@ FROM node:20-alpine AS frontend-build
 WORKDIR /app
 COPY --from=frontend-deps /app/node_modules ./node_modules
 COPY frontend/ .
+# Ensure public directory exists
+RUN mkdir -p public
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -57,8 +59,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
-COPY --from=frontend-build /app/public ./public
-RUN mkdir .next && chown nextjs:nodejs .next
+RUN mkdir -p ./public .next && chown -R nextjs:nodejs ./public .next
+COPY --from=frontend-build --chown=nextjs:nodejs /app/public ./public
 COPY --from=frontend-build --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=frontend-build --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
