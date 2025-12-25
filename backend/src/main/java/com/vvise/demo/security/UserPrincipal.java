@@ -7,16 +7,18 @@ import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.OAuth2User;
-
+import org.springframework.security.oauth2.core.oidc.OidcIdToken;
+import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Getter
 @Builder
 @AllArgsConstructor
-public class UserPrincipal implements OAuth2User, UserDetails {
+public class UserPrincipal implements OidcUser, UserDetails {
 
     private Long id;
     private String email;
@@ -24,6 +26,8 @@ public class UserPrincipal implements OAuth2User, UserDetails {
     private String imageUrl;
     private Collection<? extends GrantedAuthority> authorities;
     private Map<String, Object> attributes;
+    private OidcIdToken idToken;
+    private OidcUserInfo userInfo;
 
     public static UserPrincipal create(User user) {
         Collection<GrantedAuthority> authorities = user.getRoles().stream()
@@ -43,6 +47,24 @@ public class UserPrincipal implements OAuth2User, UserDetails {
         UserPrincipal userPrincipal = create(user);
         userPrincipal.attributes = attributes;
         return userPrincipal;
+    }
+
+    public static UserPrincipal createOidc(User user, Map<String, Object> attributes,
+                                            OidcIdToken idToken, OidcUserInfo userInfo) {
+        Collection<GrantedAuthority> authorities = user.getRoles().stream()
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
+                .collect(Collectors.toList());
+
+        return UserPrincipal.builder()
+                .id(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .imageUrl(user.getImageUrl())
+                .authorities(authorities)
+                .attributes(attributes)
+                .idToken(idToken)
+                .userInfo(userInfo)
+                .build();
     }
 
     @Override
@@ -82,5 +104,13 @@ public class UserPrincipal implements OAuth2User, UserDetails {
 
     public void setAttributes(Map<String, Object> attributes) {
         this.attributes = attributes;
+    }
+
+    @Override
+    public Map<String, Object> getClaims() {
+        if (idToken != null) {
+            return idToken.getClaims();
+        }
+        return attributes != null ? attributes : new HashMap<>();
     }
 }

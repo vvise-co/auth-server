@@ -1,6 +1,7 @@
 package com.vvise.demo.config;
 
 import com.vvise.demo.security.CustomOAuth2UserService;
+import com.vvise.demo.security.CustomOidcUserService;
 import com.vvise.demo.security.JwtAuthenticationFilter;
 import com.vvise.demo.security.OAuth2AuthenticationFailureHandler;
 import com.vvise.demo.security.OAuth2AuthenticationSuccessHandler;
@@ -27,6 +28,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomOidcUserService customOidcUserService;
     private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
     private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
     private final CorsConfigurationSource corsConfigurationSource;
@@ -50,6 +52,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
+                                .oidcUserService(customOidcUserService)
                         )
                         .successHandler(oAuth2AuthenticationSuccessHandler)
                         .failureHandler(oAuth2AuthenticationFailureHandler)
