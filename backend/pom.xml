@@ -18,7 +18,7 @@
     <description>Spring Boot Kotlin Backend with JWT and OAuth2 Authentication</description>
 
     <properties>
-        <java.version>23</java.version>
+        <java.version>21</java.version>
         <kotlin.version>2.3.0</kotlin.version>
         <jjwt.version>0.12.6</jjwt.version>
     </properties>

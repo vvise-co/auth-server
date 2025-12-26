@@ -7,7 +7,7 @@ ARG BUILD_TARGET=backend
 # ============================================
 # BACKEND BUILD STAGE
 # ============================================
-FROM eclipse-temurin:23-jdk-alpine AS backend-build
+FROM eclipse-temurin:21-jdk-alpine AS backend-build
 WORKDIR /app
 COPY backend/mvnw .
 COPY backend/.mvn .mvn
@@ -19,7 +19,7 @@ RUN ./mvnw package -DskipTests
 # ============================================
 # BACKEND RUNTIME STAGE
 # ============================================
-FROM eclipse-temurin:23-jre-alpine AS backend-runtime
+FROM eclipse-temurin:21-jre-alpine AS backend-runtime
 WORKDIR /app
 RUN addgroup -g 1001 -S appgroup && adduser -u 1001 -S appuser -G appgroup
 COPY --from=backend-build /app/target/*.jar app.jar

@@ -1,5 +1,5 @@
 # Build stage
-FROM eclipse-temurin:23-jdk-alpine AS build
+FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
 # Copy Maven wrapper and pom.xml
@@ -17,7 +17,7 @@ COPY src src
 RUN ./mvnw package -DskipTests
 
 # Runtime stage
-FROM eclipse-temurin:23-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
 # Create non-root user
