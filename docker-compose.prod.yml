@@ -5,7 +5,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: demo-backend
+    container_name: auth-backend
     ports:
       - "8080:8080"
     environment:
@@ -41,7 +41,7 @@ services:
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-    container_name: demo-frontend
+    container_name: auth-frontend
     ports:
       - "3000:3000"
     environment:

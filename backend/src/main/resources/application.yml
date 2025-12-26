@@ -4,7 +4,7 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/demo}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/auth}
     username: ${SPRING_DATASOURCE_USERNAME:}
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
@@ -75,4 +75,4 @@ logging:
     org.springframework.security: DEBUG
     org.springframework.security.oauth2: DEBUG
     org.springframework.web: DEBUG
-    com.vvise.demo: DEBUG
+    com.vvise.auth: DEBUG

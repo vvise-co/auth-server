@@ -1,6 +1,6 @@
-# Full-Stack Authentication Demo
+# Central Authentication Server
 
-A secure full-stack application with Spring Boot (JWT + OAuth2) backend and Next.js frontend, containerized with Docker for Koyeb deployment.
+A secure full-stack authentication server with Spring Boot (JWT + OAuth2) backend and Next.js frontend, containerized with Docker for Koyeb deployment. This server provides centralized authentication for multiple projects.
 
 ## Features
 
@@ -21,10 +21,10 @@ A secure full-stack application with Spring Boot (JWT + OAuth2) backend and Next
 ## Project Structure
 
 ```
-demo/
+auth/
 ├── backend/                 # Spring Boot application
-│   ├── src/main/java/
-│   │   └── com/vvise/demo/
+│   ├── src/main/kotlin/
+│   │   └── com/vvise/auth/
 │   │       ├── config/      # Security, CORS configs
 │   │       ├── controller/  # REST controllers
 │   │       ├── dto/         # Data Transfer Objects
@@ -161,7 +161,7 @@ First, create these secrets in your Koyeb dashboard (Settings > Secrets):
 1. Go to Koyeb Dashboard > Create Service > Web Service
 2. Select **GitHub** and connect your repository
 3. Configure the service:
-   - **Name**: `demo-backend`
+   - **Name**: `auth-backend`
    - **Builder**: Dockerfile
    - **Port**: `8080`
 4. **IMPORTANT** - Add build argument:
@@ -183,14 +183,14 @@ First, create these secrets in your Koyeb dashboard (Settings > Secrets):
    | `CORS_ALLOWED_ORIGINS` | Plain | `https://YOUR-FRONTEND.koyeb.app` |
    | `OAUTH2_REDIRECT_URI` | Plain | `https://YOUR-FRONTEND.koyeb.app/auth/callback` |
 
-6. Deploy and note your backend URL (e.g., `https://demo-backend-xxxxx.koyeb.app`)
+6. Deploy and note your backend URL (e.g., `https://auth-backend-xxxxx.koyeb.app`)
 
 ### 4. Deploy Frontend on Koyeb
 
 1. Create another Web Service
 2. Select the same GitHub repository
 3. Configure the service:
-   - **Name**: `demo-frontend`
+   - **Name**: `auth-frontend`
    - **Builder**: Dockerfile
    - **Port**: `3000`
 4. **IMPORTANT** - Add build arguments:
