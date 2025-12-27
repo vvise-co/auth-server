@@ -30,7 +30,10 @@ server {
     location /api/auth/callback {
         proxy_pass http://frontend/api/auth/callback;
         proxy_read_timeout 90s;
+        # Ensure cookies and redirects work properly
         proxy_pass_header Set-Cookie;
+        proxy_pass_header Location;
+        proxy_intercept_errors off;
     }
 
     # Backend API routes

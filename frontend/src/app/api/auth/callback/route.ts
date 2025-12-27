@@ -62,47 +62,24 @@ export async function GET(request: NextRequest) {
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-  const dashboardUrl = `${baseUrl}/dashboard`;
 
-  // Return HTML page that will redirect after cookies are set
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=${dashboardUrl}">
-        <title>Redirecting...</title>
-      </head>
-      <body>
-        <p>Redirecting to dashboard...</p>
-        <script>window.location.href = "${dashboardUrl}";</script>
-      </body>
-    </html>
-  `;
+  // Build Set-Cookie headers manually for more control
+  const cookieOptions = [
+    `HttpOnly`,
+    `Path=/`,
+    `SameSite=Lax`,
+    `Max-Age=${60 * 60 * 24 * 7}`, // 7 days
+    isProduction ? `Secure` : '',
+  ].filter(Boolean).join('; ');
 
-  const response = new NextResponse(html, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html',
-    },
-  });
+  const accessCookie = `access_token=${token}; ${cookieOptions.replace('Max-Age=604800', 'Max-Age=900')}`;
+  const refreshCookie = `refresh_token=${refreshToken}; ${cookieOptions}`;
 
-  // Set access token cookie
-  response.cookies.set('access_token', token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    maxAge: 60 * 15, // 15 minutes
-    path: '/',
-  });
+  // Use 302 redirect with manually set cookies
+  const response = NextResponse.redirect(new URL('/dashboard', baseUrl), 302);
 
-  // Set refresh token cookie
-  response.cookies.set('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
-  });
+  response.headers.append('Set-Cookie', accessCookie);
+  response.headers.append('Set-Cookie', refreshCookie);
 
   return response;
 }
