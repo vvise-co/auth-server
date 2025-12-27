@@ -29,7 +29,8 @@ function AuthCallbackContent() {
       })
         .then((res) => {
           if (res.ok) {
-            router.push('/dashboard');
+            // Use hard redirect to ensure cookies are read on the server
+            window.location.href = '/dashboard';
           } else {
             setError('Failed to authenticate');
           }
