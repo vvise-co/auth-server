@@ -1,6 +1,8 @@
 import { AuthResponse, User } from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+// In unified deployment, NEXT_PUBLIC_API_URL should be empty or unset to use relative paths
+// In development with separate services, set NEXT_PUBLIC_API_URL=http://localhost:8080
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 class ApiClient {
   private baseUrl: string;
