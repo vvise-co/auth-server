@@ -1,16 +1,48 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { Suspense } from 'react';
 
-interface PageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
+function AuthCallbackContent() {
+  const searchParams = useSearchParams();
+  const [error, setError] = useState<string | null>(null);
 
-export default async function AuthCallbackPage({ searchParams }: PageProps) {
-  const params = await searchParams;
-  const token = params.token as string | undefined;
-  const refreshToken = params.refreshToken as string | undefined;
-  const error = params.error as string | undefined;
+  useEffect(() => {
+    const token = searchParams.get('token');
+    const refreshToken = searchParams.get('refreshToken');
+    const errorParam = searchParams.get('error');
+
+    if (errorParam) {
+      setError(errorParam);
+      return;
+    }
+
+    if (!token || !refreshToken) {
+      setError('Missing authentication tokens');
+      return;
+    }
+
+    // Use the API route to set cookies, then redirect
+    fetch('/api/auth/callback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, refreshToken }),
+      credentials: 'include',
+    })
+      .then((res) => {
+        if (res.ok) {
+          // Force full page reload to ensure cookies are sent
+          window.location.replace('/dashboard');
+        } else {
+          setError('Failed to authenticate');
+        }
+      })
+      .catch(() => {
+        setError('Failed to authenticate');
+      });
+  }, [searchParams]);
 
   if (error) {
     return (
@@ -33,49 +65,31 @@ export default async function AuthCallbackPage({ searchParams }: PageProps) {
     );
   }
 
-  if (!token || !refreshToken) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-md w-full space-y-8 p-8">
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600 dark:text-gray-400">
+          Completing sign in...
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-red-600">
-              Authentication Error
-            </h2>
-            <p className="mt-2 text-gray-600 dark:text-gray-400">
-              Missing authentication tokens
-            </p>
-            <Link
-              href="/login"
-              className="mt-4 inline-block px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-            >
-              Back to Login
-            </Link>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  // Set cookies on the server
-  const cookieStore = await cookies();
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  cookieStore.set('access_token', token, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    maxAge: 60 * 15, // 15 minutes
-    path: '/',
-  });
-
-  cookieStore.set('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: '/',
-  });
-
-  // Redirect to dashboard
-  redirect('/dashboard');
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
+  );
 }
