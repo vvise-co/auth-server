@@ -9,12 +9,12 @@ Blueprint templates for creating new projects that use the central authenticatio
 │                     Central Auth Server                          │
 │                    (Auth Project)                                │
 │  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────────┐ │
-│  │   OAuth2    │  │    JWT      │  │    User Management       │ │
-│  │  Providers  │  │   Tokens    │  │    /api/users, /api/auth │ │
+│  │   OAuth2    │  │    JWT      │  │    Token Introspection   │ │
+│  │  Providers  │  │   Tokens    │  │    /api/auth/introspect  │ │
 │  │ Google/GH/MS│  │             │  │                          │ │
 │  └─────────────┘  └─────────────┘  └──────────────────────────┘ │
 │                         ▲                                        │
-│                         │ Shared JWT_SECRET                      │
+│                         │ Token Introspection (no shared secret) │
 └─────────────────────────┼───────────────────────────────────────┘
                           │
         ┌─────────────────┼─────────────────┐
@@ -37,82 +37,148 @@ Blueprint templates for creating new projects that use the central authenticatio
 └───────────────┘ └───────────────┘ └───────────────┘
 ```
 
+## Token Introspection
+
+**No JWT_SECRET required!** Client projects validate tokens by calling the auth server's introspection endpoint:
+
+```
+POST /api/auth/introspect
+{ "token": "access_token_here" }
+
+Response (if valid):
+{
+  "active": true,
+  "sub": "123",
+  "email": "user@example.com",
+  "name": "John Doe",
+  "roles": "USER,ADMIN"
+}
+```
+
+**Benefits:**
+- No shared secrets between services
+- Auth server has full control over token validity
+- Token revocation works immediately
+- Results are cached (5 min default) to minimize network calls
+
 ## Quick Start
 
-### Option 1: Use the init script
+### Create a new project
 
 ```bash
 cd templates/scripts
-./init-project.sh map-animator ~/Projects/@vvise-co/map-animator
+./init-project.sh my-app ~/Projects/@vvise-co/my-app
 ```
 
-### Option 2: Manual setup
-
-1. Copy the template directories to your new project
-2. Update package names and project identifiers
-3. Configure environment variables
-4. Start the auth server and your new project
+This creates a Koyeb-ready project with:
+- Root `Dockerfile` for unified deployment
+- `nginx/` config for reverse proxy
+- `.env.example` with all required variables
+- Token introspection with Caffeine caching
 
 ## Directory Structure
 
 ```
 templates/
+├── Dockerfile               # Unified Dockerfile for Koyeb
+├── .env.example             # Unified environment template
+├── nginx/
+│   └── nginx.conf.template  # Nginx reverse proxy config
+│
 ├── backend-client/          # Spring Boot backend template
-│   ├── src/main/kotlin/     # Kotlin source files
-│   │   └── com/vvise/template/
-│   │       ├── config/      # Security & CORS config
-│   │       ├── controller/  # REST endpoints
-│   │       ├── dto/         # Data transfer objects
-│   │       ├── security/    # JWT validation, auth filter
-│   │       └── service/     # Auth server client
-│   ├── src/main/resources/  # Application configuration
-│   ├── pom.xml              # Maven dependencies
-│   └── .env.example         # Environment template
+│   ├── src/main/kotlin/
+│   ├── pom.xml
+│   └── .env.example
 │
 ├── frontend-client/         # Next.js frontend template
 │   ├── src/
-│   │   ├── app/             # Next.js App Router pages
-│   │   ├── components/      # React components
-│   │   ├── lib/             # Auth helpers, API client
-│   │   └── middleware.ts    # Route protection
-│   ├── package.json         # NPM dependencies
-│   └── .env.example         # Environment template
+│   ├── package.json
+│   └── .env.example
 │
-├── docker/                  # Docker configuration
-│   ├── Dockerfile.backend   # Spring Boot Dockerfile
-│   ├── Dockerfile.frontend  # Next.js Dockerfile
-│   └── docker-compose.yml   # Local development compose
+├── docker/                  # Development Docker files
+│   ├── Dockerfile.backend
+│   ├── Dockerfile.frontend
+│   └── docker-compose.yml
 │
-├── scripts/                 # Utility scripts
-│   └── init-project.sh      # Project initializer
-│
-└── README.md                # This file
+└── scripts/
+    └── init-project.sh      # Project initializer
 ```
 
-## Configuration
+## Environment Variables
 
-### Backend Configuration
+### Unified Deployment (Koyeb/Railway)
 
-Key environment variables (in `.env`):
+For production deployment where frontend + backend run in a single container:
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `PORT` | No | Server port (auto-set by Koyeb) | `8000` |
+| `DATABASE_URL` | Yes | PostgreSQL JDBC URL | `jdbc:postgresql://host/db` |
+| `DATABASE_USERNAME` | Yes | Database user | `postgres` |
+| `DATABASE_PASSWORD` | Yes | Database password | `secret` |
+| `AUTH_SERVER_URL` | Yes | Central auth server URL | `https://auth.koyeb.app` |
+| `CORS_ALLOWED_ORIGINS` | Yes | Your app URL | `https://my-app.koyeb.app` |
+| `NEXT_PUBLIC_AUTH_SERVER_URL` | Yes | Auth server URL (client) | `https://auth.koyeb.app` |
+| `NEXT_PUBLIC_APP_URL` | Yes | Your app URL | `https://my-app.koyeb.app` |
+| `AUTH_CACHE_TTL` | No | Token cache TTL in seconds | `300` (default) |
+
+**Note:** No `JWT_SECRET` required! Token validation is done via introspection.
+
+**Unified routing:**
+- `https://my-app.koyeb.app/` → Frontend
+- `https://my-app.koyeb.app/api/**` → Backend
+- `https://my-app.koyeb.app/health` → Backend health check
+
+### Local Development (Separate Services)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `SERVER_PORT` | Backend server port | `8080` |
-| `DATABASE_URL` | PostgreSQL connection string | `jdbc:postgresql://localhost:5432/mydb` |
-| `AUTH_SERVER_URL` | Central auth server URL | `http://localhost:8081` |
-| `JWT_SECRET` | **Must match auth server** | `your-256-bit-secret` |
-| `CORS_ALLOWED_ORIGINS` | Allowed frontend origins | `http://localhost:3001` |
-
-### Frontend Configuration
-
-Key environment variables (in `.env`):
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Your backend API URL | `http://localhost:8080` |
-| `NEXT_PUBLIC_AUTH_SERVER_URL` | Auth server URL (client-side) | `http://localhost:8081` |
+| `NEXT_PUBLIC_API_URL` | Backend URL | `http://localhost:8080` |
+| `NEXT_PUBLIC_AUTH_SERVER_URL` | Auth server URL | `http://localhost:8081` |
 | `AUTH_SERVER_URL` | Auth server URL (server-side) | `http://localhost:8081` |
-| `NEXT_PUBLIC_APP_URL` | Your frontend URL | `http://localhost:3001` |
+| `NEXT_PUBLIC_APP_URL` | Frontend URL | `http://localhost:3001` |
+
+## Deployment
+
+### Option 1: Koyeb/Railway (Recommended)
+
+```bash
+# Build the unified image
+docker build -t my-app .
+
+# Run locally with default port (8000)
+docker run -p 8000:8000 --env-file .env my-app
+
+# Run with custom port
+docker run -e PORT=8080 -p 8080:8080 --env-file .env my-app
+```
+
+**Koyeb deployment:**
+1. Push your project to GitHub
+2. Connect Koyeb to your repository
+3. Koyeb auto-detects the root `Dockerfile`
+4. Set environment variables in Koyeb dashboard
+5. Deploy
+
+### Option 2: Local Development (Separate Services)
+
+1. **Start the auth server** (port 8081):
+   ```bash
+   cd /path/to/auth
+   docker-compose up
+   ```
+
+2. **Start your project's backend** (port 8080):
+   ```bash
+   cd your-project/backend
+   ./mvnw spring-boot:run
+   ```
+
+3. **Start your project's frontend** (port 3001):
+   ```bash
+   cd your-project/frontend
+   npm install && npm run dev
+   ```
 
 ## Authentication Flow
 
@@ -133,18 +199,18 @@ Key environment variables (in `.env`):
 
 5. **Protected API requests**
    - Frontend includes access token in requests
-   - Your backend validates JWT using the shared secret
-   - No need to call auth server for every request
+   - Your backend validates token via introspection (cached)
+   - Auth server confirms token validity
 
 ## Key Components
 
 ### Backend
 
-- **JwtTokenValidator**: Validates JWT tokens from the auth server
-- **JwtAuthenticationFilter**: Extracts and validates tokens from requests
-- **AuthenticatedUser**: Represents the logged-in user (from JWT claims)
+- **TokenIntrospectionService**: Validates tokens via auth server (with caching)
+- **JwtAuthenticationFilter**: Extracts tokens and calls introspection service
+- **AuthenticatedUser**: Represents the logged-in user (from introspection response)
 - **@CurrentUser**: Annotation to inject the current user into controllers
-- **AuthServerClient**: HTTP client to fetch additional user data
+- **CacheConfig**: Caffeine cache for token introspection results
 
 ### Frontend
 
@@ -153,41 +219,6 @@ Key environment variables (in `.env`):
 - **middleware.ts**: Route protection middleware
 - **OAuthButtons**: OAuth provider login buttons
 - **UserMenu**: User dropdown with logout
-
-## Security Considerations
-
-1. **JWT Secret**: The `JWT_SECRET` must be identical across the auth server and all client projects
-
-2. **CORS**: Configure `CORS_ALLOWED_ORIGINS` to only allow your frontend domains
-
-3. **HTTP-Only Cookies**: Tokens are stored in HTTP-only cookies to prevent XSS attacks
-
-4. **Token Expiration**: Access tokens expire in 15 minutes; refresh tokens in 7 days
-
-5. **HTTPS**: Always use HTTPS in production
-
-## Development Workflow
-
-1. **Start the auth server first** (port 8081):
-   ```bash
-   cd /path/to/auth
-   docker-compose up
-   # or
-   cd backend && ./mvnw spring-boot:run
-   ```
-
-2. **Start your project's backend** (port 8080):
-   ```bash
-   cd your-project/backend
-   ./mvnw spring-boot:run
-   ```
-
-3. **Start your project's frontend** (port 3001):
-   ```bash
-   cd your-project/frontend
-   npm install
-   npm run dev
-   ```
 
 ## Adding New Features
 
@@ -200,7 +231,7 @@ class ProjectController {
 
     @GetMapping
     fun getProjects(@CurrentUser user: AuthenticatedUser): List<Project> {
-        // user.id, user.email, user.roles are available
+        // user.id, user.email, user.roles, user.imageUrl are available
         return projectService.getProjectsForUser(user.id)
     }
 
@@ -231,10 +262,25 @@ export default async function Page() {
 }
 ```
 
+## Security Considerations
+
+1. **Token Introspection**: Client apps don't need the JWT secret - they call the auth server to validate tokens
+
+2. **Caching**: Token introspection results are cached for 5 minutes to reduce auth server load
+
+3. **CORS**: Configure `CORS_ALLOWED_ORIGINS` to only allow your frontend domains
+
+4. **HTTP-Only Cookies**: Tokens are stored in HTTP-only cookies to prevent XSS attacks
+
+5. **Token Expiration**: Access tokens expire in 15 minutes; refresh tokens in 7 days
+
+6. **HTTPS**: Always use HTTPS in production
+
 ## Troubleshooting
 
-### "Invalid JWT signature"
-- Ensure `JWT_SECRET` matches exactly between auth server and your project
+### "Token validation failed"
+- Ensure `AUTH_SERVER_URL` is correct and reachable
+- Check that the auth server is running
 
 ### "CORS error"
 - Add your frontend URL to `CORS_ALLOWED_ORIGINS` in your backend
@@ -246,3 +292,7 @@ export default async function Page() {
 ### "Token expired"
 - The frontend should automatically refresh tokens
 - Check that the refresh token endpoint is accessible
+
+### Cache issues
+- Token introspection results are cached for 5 minutes
+- Set `AUTH_CACHE_TTL=60` for shorter cache during development

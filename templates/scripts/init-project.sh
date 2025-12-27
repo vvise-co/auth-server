@@ -28,11 +28,25 @@ cp -r "$TEMPLATE_DIR/backend-client" "$TARGET_DIR/backend"
 echo "Copying frontend template..."
 cp -r "$TEMPLATE_DIR/frontend-client" "$TARGET_DIR/frontend"
 
-# Copy docker templates
-echo "Copying Docker templates..."
+# Copy nginx directory for unified deployment
+echo "Copying nginx configuration..."
+mkdir -p "$TARGET_DIR/nginx"
+cp "$TEMPLATE_DIR/nginx/nginx.conf.template" "$TARGET_DIR/nginx/"
+
+# Copy root Dockerfile for Koyeb deployment
+echo "Copying Dockerfile..."
+cp "$TEMPLATE_DIR/Dockerfile" "$TARGET_DIR/"
+
+# Copy docker directory for development
+echo "Copying Docker development templates..."
 mkdir -p "$TARGET_DIR/docker"
-cp "$TEMPLATE_DIR/docker/"* "$TARGET_DIR/docker/"
+cp "$TEMPLATE_DIR/docker/Dockerfile.backend" "$TARGET_DIR/docker/"
+cp "$TEMPLATE_DIR/docker/Dockerfile.frontend" "$TARGET_DIR/docker/"
 cp "$TEMPLATE_DIR/docker/docker-compose.yml" "$TARGET_DIR/"
+
+# Copy unified .env.example
+echo "Copying environment template..."
+cp "$TEMPLATE_DIR/.env.example" "$TARGET_DIR/"
 
 # Replace placeholders in backend
 echo "Customizing backend..."
@@ -65,30 +79,89 @@ find "$TARGET_DIR" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "D
 find "$TARGET_DIR" -maxdepth 2 -type f \( -name "docker-compose.yml" -o -name "Dockerfile*" \) -exec \
   sed -i "s/your_project/${PROJECT_NAME//-/_}/g" {} \;
 
-# Create .env files from examples
-echo "Creating environment files..."
-cp "$TARGET_DIR/backend/.env.example" "$TARGET_DIR/backend/.env"
-cp "$TARGET_DIR/frontend/.env.example" "$TARGET_DIR/frontend/.env"
+# Create .env from example
+echo "Creating environment file..."
+cp "$TARGET_DIR/.env.example" "$TARGET_DIR/.env"
 
 # Initialize git
 echo "Initializing git repository..."
 cd "$TARGET_DIR"
 git init
-echo "node_modules/" >> .gitignore
-echo ".env" >> .gitignore
-echo "target/" >> .gitignore
-echo ".next/" >> .gitignore
+cat > .gitignore << 'EOF'
+# Dependencies
+node_modules/
+target/
+
+# Build output
+.next/
+*.jar
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+EOF
 
 echo ""
 echo "============================================"
 echo "Project '$PROJECT_NAME' created successfully!"
 echo "============================================"
 echo ""
-echo "Next steps:"
-echo "1. cd $TARGET_DIR"
-echo "2. Update .env files with your configuration"
-echo "3. Make sure the auth server is running on port 8081"
-echo "4. Start the backend: cd backend && ./mvnw spring-boot:run"
-echo "5. Start the frontend: cd frontend && npm install && npm run dev"
+echo "Project structure:"
+echo "  $TARGET_DIR/"
+echo "  ├── backend/          # Spring Boot backend"
+echo "  ├── frontend/         # Next.js frontend"
+echo "  ├── nginx/            # Nginx config for unified deployment"
+echo "  ├── docker/           # Docker files for development"
+echo "  ├── Dockerfile        # Unified Dockerfile for Koyeb"
+echo "  ├── docker-compose.yml"
+echo "  ├── .env.example"
+echo "  └── .env"
 echo ""
-echo "Important: Ensure JWT_SECRET matches the auth server's secret!"
+echo "============================================"
+echo "DEPLOYMENT OPTIONS"
+echo "============================================"
+echo ""
+echo "Option 1: Koyeb/Railway (Unified - Recommended)"
+echo "  1. Push to GitHub"
+echo "  2. Connect to Koyeb/Railway"
+echo "  3. Set environment variables (see .env.example)"
+echo "  4. Deploy - Koyeb will use the root Dockerfile"
+echo ""
+echo "Option 2: Local Development (Separate Services)"
+echo "  1. cd $TARGET_DIR"
+echo "  2. Update .env with local settings"
+echo "  3. Start auth server on port 8081"
+echo "  4. Start backend: cd backend && ./mvnw spring-boot:run"
+echo "  5. Start frontend: cd frontend && npm install && npm run dev"
+echo ""
+echo "============================================"
+echo "REQUIRED ENVIRONMENT VARIABLES"
+echo "============================================"
+echo ""
+echo "| Variable                    | Description                    |"
+echo "|-----------------------------|--------------------------------|"
+echo "| DATABASE_URL                | PostgreSQL JDBC URL            |"
+echo "| DATABASE_USERNAME           | Database user                  |"
+echo "| DATABASE_PASSWORD           | Database password              |"
+echo "| AUTH_SERVER_URL             | Central auth server URL        |"
+echo "| JWT_SECRET                  | Must match auth server         |"
+echo "| CORS_ALLOWED_ORIGINS        | Your app URL                   |"
+echo "| NEXT_PUBLIC_AUTH_SERVER_URL | Auth server URL (client-side)  |"
+echo "| NEXT_PUBLIC_APP_URL         | Your app URL                   |"
+echo ""
+echo "Important: JWT_SECRET must match the auth server's secret!"
+echo ""

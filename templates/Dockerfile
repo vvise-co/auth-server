@@ -1,7 +1,10 @@
-# Unified Dockerfile for Koyeb deployment
+# Unified Dockerfile for Koyeb/Railway deployment
 # Frontend + Backend with Nginx reverse proxy
 # Frontend accessible at root (/), Backend at /api/**
 # Port is configurable via PORT env var (default: 8000)
+#
+# Build: docker build -t your-project .
+# Run:   docker run -p 8000:8000 --env-file .env your-project
 
 # ============================================
 # BACKEND BUILD STAGE
@@ -34,7 +37,11 @@ COPY frontend/ .
 RUN mkdir -p public
 # API URL is same origin since Nginx proxies /api to backend
 ARG NEXT_PUBLIC_API_URL=""
+ARG NEXT_PUBLIC_AUTH_SERVER_URL=""
+ARG NEXT_PUBLIC_APP_URL=""
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_AUTH_SERVER_URL=$NEXT_PUBLIC_AUTH_SERVER_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -49,8 +56,7 @@ RUN apk add --no-cache \
     supervisor \
     openjdk21-jre \
     nodejs \
-    curl \
-    gettext
+    curl
 
 # Create necessary directories
 RUN mkdir -p /var/log/supervisor /run/nginx /app/backend /app/frontend
@@ -71,7 +77,7 @@ RUN cat > /app/start.sh << 'EOF'
 #!/bin/sh
 set -e
 
-# Default port for Koyeb
+# Default port for cloud platforms
 export PORT=${PORT:-8000}
 
 # Generate nginx config from template (only substitute PORT, preserve nginx variables)
@@ -126,7 +132,7 @@ EOF
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Koyeb uses PORT env var, default to 8000
+# Cloud platforms use PORT env var, default to 8000
 ENV PORT=8000
 EXPOSE 8000
 

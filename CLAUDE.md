@@ -21,7 +21,14 @@ npm run build                       # Production build
 npm run lint                        # Run ESLint
 ```
 
-### Docker (Full Stack)
+### Docker (Unified Deployment)
+```bash
+docker build -t auth-server .                    # Build unified image
+docker run -p 8000:8000 --env-file .env auth-server  # Run on port 8000
+PORT=8080 docker run -p 8080:8080 --env-file .env auth-server  # Custom port
+```
+
+### Docker Compose (Development - Separate Services)
 ```bash
 docker-compose up --build           # Build and run all services
 docker-compose up -d --build        # Run in detached mode
@@ -84,13 +91,43 @@ User-Role is many-to-many via `user_roles` join table.
 
 ## Environment Variables
 
-Critical variables (see `.env.example`):
-- `JWT_SECRET`: Must be 256+ bits (32+ chars)
-- `SPRING_DATASOURCE_URL`: PostgreSQL JDBC URL
-- OAuth2 credentials: `GOOGLE_CLIENT_ID`, `GITHUB_CLIENT_ID`, `MICROSOFT_CLIENT_ID` + secrets
-- `CORS_ALLOWED_ORIGINS`: Frontend URL(s)
-- `OAUTH2_REDIRECT_URI`: Frontend callback URL
-- `NEXT_PUBLIC_API_URL`: Backend URL for frontend
+### Unified Deployment (Single Container)
+
+For Koyeb/Railway deployment where frontend and backend run together:
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `PORT` | No | Server port (auto-set by Koyeb) | `8000` |
+| `SPRING_DATASOURCE_URL` | Yes | PostgreSQL JDBC URL | `jdbc:postgresql://host/db?user=x&password=y` |
+| `JWT_SECRET` | Yes | JWT signing key (32+ chars) | `openssl rand -base64 32` |
+| `GOOGLE_CLIENT_ID` | Yes* | Google OAuth client ID | From Google Console |
+| `GOOGLE_CLIENT_SECRET` | Yes* | Google OAuth client secret | From Google Console |
+| `GITHUB_CLIENT_ID` | Yes* | GitHub OAuth client ID | From GitHub Settings |
+| `GITHUB_CLIENT_SECRET` | Yes* | GitHub OAuth client secret | From GitHub Settings |
+| `MICROSOFT_CLIENT_ID` | Yes* | Microsoft OAuth client ID | From Azure Portal |
+| `MICROSOFT_CLIENT_SECRET` | Yes* | Microsoft OAuth client secret | From Azure Portal |
+| `CORS_ALLOWED_ORIGINS` | Yes | Your app URL | `https://your-app.koyeb.app` |
+| `OAUTH2_REDIRECT_URI` | Yes | OAuth callback URL | `https://your-app.koyeb.app/auth/callback` |
+
+*At least one OAuth provider required.
+
+**Unified routing:**
+- `https://your-app.koyeb.app/` → Frontend
+- `https://your-app.koyeb.app/api/**` → Backend
+- `https://your-app.koyeb.app/oauth2/**` → Backend OAuth
+
+**OAuth callback URLs to configure in provider consoles:**
+- Google: `https://your-app.koyeb.app/login/oauth2/code/google`
+- GitHub: `https://your-app.koyeb.app/login/oauth2/code/github`
+- Microsoft: `https://your-app.koyeb.app/login/oauth2/code/microsoft`
+
+### Separate Services (Development)
+
+When running frontend and backend on different ports:
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Backend URL for frontend (e.g., `http://localhost:8080`) |
 
 ## Templates Directory
 
