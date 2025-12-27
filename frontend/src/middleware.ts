@@ -2,13 +2,20 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Paths that don't require authentication
-const publicPaths = ['/login', '/auth/callback', '/api/auth/callback'];
+const publicPaths = ['/login', '/auth/callback', '/api/auth/callback', '/api/auth'];
 
 // Paths that require authentication
 const protectedPaths = ['/dashboard'];
 
+function getBaseUrl(request: NextRequest): string {
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+  const protocol = request.headers.get('x-forwarded-proto') || 'http';
+  return `${protocol}://${host}`;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const baseUrl = getBaseUrl(request);
 
   // Check if the path is public
   const isPublicPath = publicPaths.some(
@@ -28,12 +35,12 @@ export function middleware(request: NextRequest) {
 
   // Redirect authenticated users away from login page
   if (isPublicPath && isAuthenticated && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/dashboard', baseUrl));
   }
 
   // Redirect unauthenticated users to login
   if (isProtectedPath && !isAuthenticated) {
-    const loginUrl = new URL('/login', request.url);
+    const loginUrl = new URL('/login', baseUrl);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
