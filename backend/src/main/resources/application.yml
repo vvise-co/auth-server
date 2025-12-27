@@ -67,7 +67,8 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
   oauth2:
-    authorized-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/auth/callback}
+    # Redirect to API route handler which sets cookies and redirects to dashboard
+    authorized-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/api/auth/callback}
 
 # Logging configuration
 logging:
