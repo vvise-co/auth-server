@@ -1,25 +1,8 @@
 import { AuthResponse, User } from './types';
-import { headers } from 'next/headers';
 
 // In unified deployment, NEXT_PUBLIC_API_URL should be empty or unset to use relative paths
 // In development with separate services, set NEXT_PUBLIC_API_URL=http://localhost:8080
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
-
-// Get base URL for server-side requests
-async function getServerBaseUrl(): Promise<string> {
-  if (API_URL) return API_URL;
-
-  // For server-side requests in unified deployment, construct URL from headers
-  try {
-    const headersList = await headers();
-    const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
-    const protocol = headersList.get('x-forwarded-proto') || 'http';
-    return `${protocol}://${host}`;
-  } catch {
-    // Fallback for client-side
-    return '';
-  }
-}
 
 class ApiClient {
   private baseUrl: string;
@@ -28,13 +11,16 @@ class ApiClient {
     this.baseUrl = baseUrl;
   }
 
+  // Allow setting base URL dynamically for server-side requests
+  withBaseUrl(baseUrl: string): ApiClient {
+    return new ApiClient(baseUrl);
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    // Get the appropriate base URL for server-side requests
-    const baseUrl = this.baseUrl || await getServerBaseUrl();
-    const url = `${baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {
       ...options,

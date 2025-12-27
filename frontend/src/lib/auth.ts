@@ -1,9 +1,25 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { apiClient } from './api';
 import { User, AuthTokens } from './types';
 
 const ACCESS_TOKEN_COOKIE = 'access_token';
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
+
+// Get base URL for server-side API requests
+async function getServerApiClient() {
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  if (API_URL) {
+    return apiClient;
+  }
+
+  // For unified deployment, construct URL from headers
+  const headersList = await headers();
+  const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
+  const protocol = headersList.get('x-forwarded-proto') || 'http';
+  const baseUrl = `${protocol}://${host}`;
+
+  return apiClient.withBaseUrl(baseUrl);
+}
 
 export async function getTokens(): Promise<AuthTokens | null> {
   const cookieStore = await cookies();
@@ -25,15 +41,17 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 
   try {
-    const user = await apiClient.getCurrentUser(tokens.accessToken);
+    const client = await getServerApiClient();
+    const user = await client.getCurrentUser(tokens.accessToken);
     return user;
   } catch (error) {
     // Try to refresh the token
     try {
-      const authResponse = await apiClient.refreshToken(tokens.refreshToken);
+      const client = await getServerApiClient();
+      const authResponse = await client.refreshToken(tokens.refreshToken);
 
       // Set new cookies (this will be done via API route)
-      const user = await apiClient.getCurrentUser(authResponse.accessToken);
+      const user = await client.getCurrentUser(authResponse.accessToken);
       return user;
     } catch {
       return null;
