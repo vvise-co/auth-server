@@ -48,12 +48,17 @@ export async function GET(request: NextRequest) {
   const token = searchParams.get('token');
   const refreshToken = searchParams.get('refreshToken');
 
+  // Get the host from headers (set by nginx proxy)
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
+  const protocol = request.headers.get('x-forwarded-proto') || 'http';
+  const baseUrl = `${protocol}://${host}`;
+
   if (!token || !refreshToken) {
-    return NextResponse.redirect(new URL('/login?error=missing_tokens', request.url));
+    return NextResponse.redirect(new URL('/login?error=missing_tokens', baseUrl));
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-  const response = NextResponse.redirect(new URL('/dashboard', request.url));
+  const response = NextResponse.redirect(new URL('/dashboard', baseUrl));
 
   // Set access token cookie
   response.cookies.set('access_token', token, {
