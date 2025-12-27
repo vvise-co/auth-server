@@ -14,13 +14,9 @@ export function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get('refresh_token')?.value;
   const isAuthenticated = !!(accessToken && refreshToken);
 
-  // Log for debugging
-  console.log('Middleware:', { pathname, isAuthenticated, cookies: request.cookies.getAll().map(c => c.name) });
-
   // Protected routes - redirect to login if not authenticated
   if (pathname.startsWith('/dashboard')) {
     if (!isAuthenticated) {
-      console.log('Middleware: Not authenticated, redirecting to login');
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }

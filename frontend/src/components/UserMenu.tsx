@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { User } from '@/lib/types';
 import { LogOut, User as UserIcon, ChevronDown } from 'lucide-react';
 
@@ -10,7 +9,6 @@ interface UserMenuProps {
 }
 
 export default function UserMenu({ user }: UserMenuProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -19,11 +17,11 @@ export default function UserMenu({ user }: UserMenuProps) {
     try {
       await fetch('/api/auth/logout', {
         method: 'POST',
+        credentials: 'include',
       });
-      router.push('/login');
-      router.refresh();
-    } catch (error) {
-      console.error('Logout error:', error);
+      // Force full page navigation to ensure cookies are cleared
+      window.location.replace('/login');
+    } catch {
       setIsLoggingOut(false);
     }
   };

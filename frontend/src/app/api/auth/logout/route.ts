@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { apiClient } from '@/lib/api';
 
@@ -11,20 +11,41 @@ export async function POST(request: NextRequest) {
     // Call backend to invalidate tokens
     if (accessToken || refreshToken) {
       try {
-        await apiClient.logout(refreshToken, accessToken);
-      } catch (error) {
+        // Get base URL for server-side request
+        const headersList = await headers();
+        const host = headersList.get('x-forwarded-host') || headersList.get('host') || 'localhost:3000';
+        const protocol = headersList.get('x-forwarded-proto') || 'http';
+        const baseUrl = `${protocol}://${host}`;
+
+        const client = apiClient.withBaseUrl(baseUrl);
+        await client.logout(refreshToken, accessToken);
+      } catch {
         // Continue with logout even if backend call fails
-        console.error('Backend logout error:', error);
       }
     }
 
-    // Clear cookies
-    cookieStore.delete('access_token');
-    cookieStore.delete('refresh_token');
+    // Create response with cookies cleared
+    const response = NextResponse.json({ success: true });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Logout error:', error);
+    // Clear cookies by setting them with immediate expiration
+    response.cookies.set('access_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    response.cookies.set('refresh_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0,
+      path: '/',
+    });
+
+    return response;
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
