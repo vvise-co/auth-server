@@ -65,24 +65,50 @@ cp .env.example .env
 
 ### 2. Set Up OAuth2 Providers
 
+Configure redirect URIs based on your deployment mode:
+
+| Provider | Local Development | Unified Deployment (Koyeb) |
+|----------|-------------------|----------------------------|
+| Google | `http://localhost:8080/login/oauth2/code/google` | `https://your-app.koyeb.app/login/oauth2/code/google` |
+| GitHub | `http://localhost:8080/login/oauth2/code/github` | `https://your-app.koyeb.app/login/oauth2/code/github` |
+| Microsoft | `http://localhost:8080/login/oauth2/code/microsoft` | `https://your-app.koyeb.app/login/oauth2/code/microsoft` |
+
 #### Google
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
-3. Enable OAuth consent screen
-4. Create OAuth 2.0 credentials
-5. Add authorized redirect URI: `http://localhost:8080/login/oauth2/code/google`
+3. Navigate to **APIs & Services** > **Credentials**
+4. Click **Create Credentials** > **OAuth client ID**
+5. Select **Web application**
+6. Add **Authorized redirect URIs**:
+   - Local: `http://localhost:8080/login/oauth2/code/google`
+   - Production: `https://your-app.koyeb.app/login/oauth2/code/google`
+7. Copy Client ID and Client Secret to your `.env` file
 
 #### GitHub
 1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Create a new OAuth App
-3. Set Homepage URL: `http://localhost:3000`
-4. Set Authorization callback URL: `http://localhost:8080/login/oauth2/code/github`
+2. Click **New OAuth App**
+3. Fill in the details:
+   - **Application name**: Your app name
+   - **Homepage URL**: `http://localhost:3000` (or your production URL)
+   - **Authorization callback URL**:
+     - Local: `http://localhost:8080/login/oauth2/code/github`
+     - Production: `https://your-app.koyeb.app/login/oauth2/code/github`
+4. Click **Register application**
+5. Generate a new client secret
+6. Copy Client ID and Client Secret to your `.env` file
 
 #### Microsoft
 1. Go to [Azure Portal](https://portal.azure.com/)
-2. Register a new application in Azure AD
-3. Add redirect URI: `http://localhost:8080/login/oauth2/code/microsoft`
-4. Create a client secret
+2. Navigate to **Azure Active Directory** > **App registrations**
+3. Click **New registration**
+4. Fill in the details:
+   - **Name**: Your app name
+   - **Supported account types**: Select based on your needs
+   - **Redirect URI**: Select **Web** and add:
+     - Local: `http://localhost:8080/login/oauth2/code/microsoft`
+     - Production: `https://your-app.koyeb.app/login/oauth2/code/microsoft`
+5. After registration, go to **Certificates & secrets** > **New client secret**
+6. Copy **Application (client) ID** and the secret value to your `.env` file
 
 ### 3. Run with Docker
 

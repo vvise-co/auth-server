@@ -25,6 +25,7 @@ services:
       # CORS and OAuth2 Redirect
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - OAUTH2_REDIRECT_URI=${OAUTH2_REDIRECT_URI}
+      - OAUTH2_BASE_URL=${OAUTH2_BASE_URL}
       # Java options for production
       - JAVA_OPTS=-Xmx512m -Xms256m
     healthcheck:
