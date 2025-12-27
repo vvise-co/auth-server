@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET handler that sets cookies and redirects - avoids proxy issues
+// GET handler that sets cookies and redirects
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const token = searchParams.get('token');
@@ -53,30 +53,38 @@ export async function GET(request: NextRequest) {
   const host = request.headers.get('host');
   const forwardedProto = request.headers.get('x-forwarded-proto');
 
-  console.log('Auth callback GET - Headers:', {
-    forwardedHost,
-    host,
-    forwardedProto,
-    hasToken: !!token,
-    hasRefreshToken: !!refreshToken,
-  });
-
   const finalHost = forwardedHost || host || 'localhost:3000';
-  const protocol = forwardedProto || 'https'; // Default to https for production
+  const protocol = forwardedProto || 'https';
   const baseUrl = `${protocol}://${finalHost}`;
 
-  console.log('Auth callback GET - Redirect baseUrl:', baseUrl);
-
   if (!token || !refreshToken) {
-    console.log('Auth callback GET - Missing tokens, redirecting to login');
     return NextResponse.redirect(new URL('/login?error=missing_tokens', baseUrl));
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-  const dashboardUrl = new URL('/dashboard', baseUrl);
-  console.log('Auth callback GET - Redirecting to:', dashboardUrl.toString());
+  const dashboardUrl = `${baseUrl}/dashboard`;
 
-  const response = NextResponse.redirect(dashboardUrl);
+  // Return HTML page that will redirect after cookies are set
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=${dashboardUrl}">
+        <title>Redirecting...</title>
+      </head>
+      <body>
+        <p>Redirecting to dashboard...</p>
+        <script>window.location.href = "${dashboardUrl}";</script>
+      </body>
+    </html>
+  `;
+
+  const response = new NextResponse(html, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html',
+    },
+  });
 
   // Set access token cookie
   response.cookies.set('access_token', token, {
@@ -96,6 +104,5 @@ export async function GET(request: NextRequest) {
     path: '/',
   });
 
-  console.log('Auth callback GET - Cookies set, returning redirect response');
   return response;
 }
