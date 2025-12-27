@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -12,27 +11,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const cookieStore = await cookies();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const response = NextResponse.json({ success: true });
 
     // Set access token cookie
-    cookieStore.set('access_token', token, {
+    response.cookies.set('access_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
       maxAge: 60 * 15, // 15 minutes
       path: '/',
     });
 
     // Set refresh token cookie
-    cookieStore.set('refresh_token', refreshToken, {
+    response.cookies.set('refresh_token', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
 
-    return NextResponse.json({ success: true });
+    return response;
   } catch (error) {
     console.error('Auth callback error:', error);
     return NextResponse.json(
