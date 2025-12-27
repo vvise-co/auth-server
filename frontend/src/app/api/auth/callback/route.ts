@@ -49,16 +49,34 @@ export async function GET(request: NextRequest) {
   const refreshToken = searchParams.get('refreshToken');
 
   // Get the host from headers (set by nginx proxy)
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-  const protocol = request.headers.get('x-forwarded-proto') || 'http';
-  const baseUrl = `${protocol}://${host}`;
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const host = request.headers.get('host');
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+
+  console.log('Auth callback GET - Headers:', {
+    forwardedHost,
+    host,
+    forwardedProto,
+    hasToken: !!token,
+    hasRefreshToken: !!refreshToken,
+  });
+
+  const finalHost = forwardedHost || host || 'localhost:3000';
+  const protocol = forwardedProto || 'https'; // Default to https for production
+  const baseUrl = `${protocol}://${finalHost}`;
+
+  console.log('Auth callback GET - Redirect baseUrl:', baseUrl);
 
   if (!token || !refreshToken) {
+    console.log('Auth callback GET - Missing tokens, redirecting to login');
     return NextResponse.redirect(new URL('/login?error=missing_tokens', baseUrl));
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-  const response = NextResponse.redirect(new URL('/dashboard', baseUrl));
+  const dashboardUrl = new URL('/dashboard', baseUrl);
+  console.log('Auth callback GET - Redirecting to:', dashboardUrl.toString());
+
+  const response = NextResponse.redirect(dashboardUrl);
 
   // Set access token cookie
   response.cookies.set('access_token', token, {
@@ -78,5 +96,6 @@ export async function GET(request: NextRequest) {
     path: '/',
   });
 
+  console.log('Auth callback GET - Cookies set, returning redirect response');
   return response;
 }

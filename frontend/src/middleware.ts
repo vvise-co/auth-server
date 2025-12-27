@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 // Paths that don't require authentication
-const publicPaths = ['/login', '/auth/callback', '/api/auth/callback', '/api/auth'];
+const publicPaths = ['/login', '/auth/callback', '/api/auth/callback', '/api/auth', '/api/'];
 
 // Paths that require authentication
 const protectedPaths = ['/dashboard'];
@@ -15,6 +15,12 @@ function getBaseUrl(request: NextRequest): string {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Skip middleware for API routes entirely - they handle their own auth
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   const baseUrl = getBaseUrl(request);
 
   // Check if the path is public
