@@ -24,6 +24,12 @@ server {
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
 
+    # Frontend API routes (Next.js API routes that need to run on frontend)
+    location /api/auth/callback {
+        proxy_pass http://frontend/api/auth/callback;
+        proxy_read_timeout 90s;
+    }
+
     # Backend API routes
     location /api/ {
         proxy_pass http://backend/api/;
