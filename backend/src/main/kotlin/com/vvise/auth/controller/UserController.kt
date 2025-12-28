@@ -12,6 +12,13 @@ class UserController(
     private val userService: UserService
 ) {
 
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    fun getAllUsers(): ResponseEntity<List<UserDto>> {
+        val users = userService.findAll()
+        return ResponseEntity.ok(users.map { UserDto.fromEntity(it) })
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isCurrentUser(#id)")
     fun getUser(@PathVariable id: Long): ResponseEntity<UserDto> {

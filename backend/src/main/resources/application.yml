@@ -69,6 +69,8 @@ app:
   oauth2:
     # Redirect to API route handler which sets cookies and redirects to dashboard
     authorized-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/api/auth/callback}
+    # Allowed domains for client app redirects (comma-separated, supports wildcards like *.koyeb.app)
+    allowed-redirect-domains: ${OAUTH2_ALLOWED_REDIRECT_DOMAINS:}
 
 # Logging configuration
 logging:

@@ -33,6 +33,9 @@ class UserService(
     fun findById(id: Long): User? = userRepository.findById(id).orElse(null)
 
     @Transactional(readOnly = true)
+    fun findAll(): List<User> = userRepository.findAll()
+
+    @Transactional(readOnly = true)
     fun findByEmail(email: String): User? = userRepository.findByEmail(email)
 
     @Transactional(readOnly = true)

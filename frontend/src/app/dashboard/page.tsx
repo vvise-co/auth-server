@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getCurrentUser, isAdmin } from '@/lib/auth';
 import UserMenu from '@/components/UserMenu';
-import { Shield, User, Calendar, Mail } from 'lucide-react';
+import { Shield, User, Calendar, Mail, Users, UserCog } from 'lucide-react';
+import Link from 'next/link';
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
@@ -103,6 +104,40 @@ export default async function DashboardPage() {
                 day: 'numeric',
               })}
             </p>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="mt-8">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Profile Link */}
+            <Link
+              href="/profile"
+              className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow"
+            >
+              <UserCog className="h-8 w-8 text-primary-600 mr-4" />
+              <div>
+                <h4 className="font-medium text-gray-900 dark:text-white">Profile Settings</h4>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Manage your account</p>
+              </div>
+            </Link>
+
+            {/* User Management (Admin only) */}
+            {userIsAdmin && (
+              <Link
+                href="/users"
+                className="flex items-center p-4 bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition-shadow border-2 border-yellow-200 dark:border-yellow-800"
+              >
+                <Users className="h-8 w-8 text-yellow-600 mr-4" />
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white">User Management</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Manage all users</p>
+                </div>
+              </Link>
+            )}
           </div>
         </div>
 
