@@ -118,11 +118,13 @@ For production deployment where frontend + backend run in a single container:
 | `DATABASE_PASSWORD` | Yes | Database password | `secret` |
 | `AUTH_SERVER_URL` | Yes | Central auth server URL | `https://auth.koyeb.app` |
 | `CORS_ALLOWED_ORIGINS` | Yes | Your app URL | `https://my-app.koyeb.app` |
-| `NEXT_PUBLIC_AUTH_SERVER_URL` | Yes | Auth server URL (client) | `https://auth.koyeb.app` |
 | `NEXT_PUBLIC_APP_URL` | Yes | Your app URL | `https://my-app.koyeb.app` |
 | `AUTH_CACHE_TTL` | No | Token cache TTL in seconds | `300` (default) |
 
-**Note:** No `JWT_SECRET` required! Token validation is done via introspection.
+**Notes:**
+- No `JWT_SECRET` required! Token validation is done via introspection.
+- No `NEXT_PUBLIC_API_URL` required! Nginx proxies `/api` to the backend.
+- `AUTH_SERVER_URL` is used for both backend (introspection) and frontend (OAuth redirects).
 
 **Unified routing:**
 - `https://my-app.koyeb.app/` → Frontend
@@ -131,10 +133,12 @@ For production deployment where frontend + backend run in a single container:
 
 ### Local Development (Separate Services)
 
+When running frontend (3001), backend (8080), and auth server (8081) separately:
+
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend URL | `http://localhost:8080` |
-| `NEXT_PUBLIC_AUTH_SERVER_URL` | Auth server URL | `http://localhost:8081` |
+| `NEXT_PUBLIC_API_URL` | Backend URL (only for local dev) | `http://localhost:8080` |
+| `NEXT_PUBLIC_AUTH_SERVER_URL` | Auth server URL (browser) | `http://localhost:8081` |
 | `AUTH_SERVER_URL` | Auth server URL (server-side) | `http://localhost:8081` |
 | `NEXT_PUBLIC_APP_URL` | Frontend URL | `http://localhost:3001` |
 
@@ -287,7 +291,7 @@ export default async function Page() {
 
 ### "Redirect loop on login"
 - Check that the auth server's OAuth callback URL includes your app's callback URL
-- Verify `NEXT_PUBLIC_AUTH_SERVER_URL` is correct
+- Verify `AUTH_SERVER_URL` is correct
 
 ### "Token expired"
 - The frontend should automatically refresh tokens

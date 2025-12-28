@@ -35,12 +35,14 @@ WORKDIR /app
 COPY --from=frontend-deps /app/node_modules ./node_modules
 COPY frontend/ .
 RUN mkdir -p public
-# API URL is same origin since Nginx proxies /api to backend
+# NEXT_PUBLIC_API_URL: Not needed - nginx proxies /api to backend (same origin)
+# NEXT_PUBLIC_AUTH_SERVER_URL: Set from AUTH_SERVER_URL at build time
+# NEXT_PUBLIC_APP_URL: Your deployed app URL
 ARG NEXT_PUBLIC_API_URL=""
-ARG NEXT_PUBLIC_AUTH_SERVER_URL=""
+ARG AUTH_SERVER_URL=""
 ARG NEXT_PUBLIC_APP_URL=""
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_AUTH_SERVER_URL=$NEXT_PUBLIC_AUTH_SERVER_URL
+ENV NEXT_PUBLIC_AUTH_SERVER_URL=$AUTH_SERVER_URL
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
