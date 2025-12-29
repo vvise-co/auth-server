@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookieOptions } from '@/lib/auth';
+import { cookieOptions } from '@/lib/auth-utils';
 
 /**
  * API route to set auth cookies after OAuth callback.

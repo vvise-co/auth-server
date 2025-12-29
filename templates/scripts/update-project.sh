@@ -348,9 +348,9 @@ fi
 if [ "$UPDATE_SCRIPTS" = true ]; then
   echo -e "${GREEN}Updating shared lib files...${NC}"
 
-  # Update frontend lib files (auth.ts, api.ts, types.ts)
+  # Update frontend lib files (auth.ts, auth-utils.ts, api.ts, types.ts)
   if [ -d "$TARGET_DIR/frontend/src/lib" ]; then
-    for file in auth.ts api.ts types.ts; do
+    for file in auth.ts auth-utils.ts api.ts types.ts; do
       if [ -f "$TEMPLATE_DIR/frontend-client/src/lib/$file" ]; then
         cp "$TEMPLATE_DIR/frontend-client/src/lib/$file" "$TARGET_DIR/frontend/src/lib/"
         UPDATED+=("frontend/src/lib/$file")

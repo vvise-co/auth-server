@@ -102,6 +102,8 @@ user=root
 command=nginx -g "daemon off;"
 autostart=true
 autorestart=true
+startsecs=2
+startretries=3
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -112,6 +114,8 @@ command=java -jar /app/backend/app.jar
 directory=/app/backend
 autostart=true
 autorestart=true
+startsecs=10
+startretries=5
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -123,6 +127,8 @@ command=node /app/frontend/server.js
 directory=/app/frontend
 autostart=true
 autorestart=true
+startsecs=5
+startretries=3
 stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
@@ -131,7 +137,8 @@ environment=NODE_ENV="production",PORT="3000",HOSTNAME="0.0.0.0"
 EOF
 
 # Health check using the configured port
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+# Increased start-period to 120s for Java startup time
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
 # Cloud platforms use PORT env var, default to 8000

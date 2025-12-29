@@ -7,6 +7,18 @@ interface LoginPageProps {
   searchParams: Promise<{ redirect_uri?: string }>;
 }
 
+async function setRedirectCookie(redirectUri: string) {
+  'use server';
+  const cookieStore = await cookies();
+  cookieStore.set('oauth2_redirect_uri', redirectUri, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 10, // 10 minutes
+  });
+}
+
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const user = await getCurrentUser();
   const params = await searchParams;
@@ -20,16 +32,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     redirect('/dashboard');
   }
 
-  // Store redirect_uri in cookie for the OAuth flow
+  // Store redirect_uri in cookie for the OAuth flow via Server Action
   if (redirectUri) {
-    const cookieStore = await cookies();
-    cookieStore.set('oauth2_redirect_uri', redirectUri, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 10, // 10 minutes
-    });
+    await setRedirectCookie(redirectUri);
   }
 
   return (

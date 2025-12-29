@@ -1,5 +1,12 @@
+/**
+ * Server-only auth utilities.
+ * Use this in Server Components and API routes only.
+ */
 import { cookies } from 'next/headers';
 import { User } from './types';
+
+// Re-export utilities that don't depend on server-only imports
+export { cookieOptions, hasRole, isAdmin } from './auth-utils';
 
 const AUTH_SERVER_URL = process.env.AUTH_SERVER_URL || 'http://localhost:8081';
 const ACCESS_TOKEN_COOKIE = 'access_token';
@@ -72,20 +79,6 @@ async function refreshAccessToken(
 }
 
 /**
- * Check if user has a specific role.
- */
-export function hasRole(user: User | null, role: string): boolean {
-  return user?.roles?.includes(role.toUpperCase()) ?? false;
-}
-
-/**
- * Check if user is an admin.
- */
-export function isAdmin(user: User | null): boolean {
-  return hasRole(user, 'ADMIN');
-}
-
-/**
  * Get the OAuth2 login URL for a provider.
  * In unified deployment, appUrl can be omitted if called from client-side (uses window.location.origin).
  * For server-side rendering, pass the appUrl or set NEXT_PUBLIC_APP_URL.
@@ -100,13 +93,3 @@ export function getLoginUrl(provider: string, callbackUrl?: string, appUrl?: str
   // The auth server will redirect back with tokens
   return `${AUTH_SERVER_URL}/oauth2/authorization/${provider}?redirect_uri=${encodeURIComponent(callback)}`;
 }
-
-/**
- * Cookie options for auth tokens.
- */
-export const cookieOptions = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
-  path: '/',
-};
