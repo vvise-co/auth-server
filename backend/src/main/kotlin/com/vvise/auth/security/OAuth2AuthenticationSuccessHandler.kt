@@ -66,13 +66,13 @@ class OAuth2AuthenticationSuccessHandler(
         val isSecure = isSecureRequest(request)
         log.info("Using secure cookies: $isSecure")
 
-        // Set auth cookies directly on response
+        // Determine redirect URL and whether to include tokens in URL
+        val targetUrl = determineTargetUrl(request, accessToken, refreshToken.token)
+        log.info("Target redirect URL: $targetUrl")
+
+        // Set auth cookies for same-domain requests (they work via SameSite=Lax)
         setAuthCookies(response, accessToken, refreshToken.token, isSecure)
         log.info("Auth cookies set on response")
-
-        // Determine redirect URL (without tokens in URL)
-        val targetUrl = determineTargetUrl(request)
-        log.info("Target redirect URL: $targetUrl")
 
         // Clear the redirect URI cookie
         clearRedirectUriCookie(response)
@@ -87,7 +87,7 @@ class OAuth2AuthenticationSuccessHandler(
         redirectStrategy.sendRedirect(request, response, targetUrl)
     }
 
-    private fun determineTargetUrl(request: HttpServletRequest): String {
+    private fun determineTargetUrl(request: HttpServletRequest, accessToken: String, refreshToken: String): String {
         // Get redirect URI from cookie or use default
         val cookieRedirectUri = getRedirectUriFromCookie(request)
         val redirectUri = cookieRedirectUri ?: defaultRedirectUri
@@ -95,8 +95,35 @@ class OAuth2AuthenticationSuccessHandler(
         log.info("Default redirect URI: $defaultRedirectUri")
         log.info("Using redirect URI: $redirectUri")
 
-        // Return the callback URL without tokens (cookies are already set)
-        return redirectUri
+        // Check if this is a cross-domain redirect (client app)
+        val isCrossDomain = isCrossDomainRedirect(request, redirectUri)
+        log.info("Is cross-domain redirect: $isCrossDomain")
+
+        return if (isCrossDomain) {
+            // For cross-domain (client apps), pass tokens in URL since cookies won't work cross-site
+            val separator = if (redirectUri.contains("?")) "&" else "?"
+            "$redirectUri${separator}token=$accessToken&refreshToken=$refreshToken"
+        } else {
+            // For same-domain (auth server frontend), cookies are already set
+            redirectUri
+        }
+    }
+
+    private fun isCrossDomainRedirect(request: HttpServletRequest, redirectUri: String): Boolean {
+        return try {
+            val redirectHost = URI.create(redirectUri).host ?: return false
+            val requestHost = request.getHeader("X-Forwarded-Host")
+                ?: request.getHeader("Host")?.split(":")?.firstOrNull()
+                ?: request.serverName
+
+            log.debug("Checking cross-domain: redirectHost=$redirectHost, requestHost=$requestHost")
+
+            // If redirect is to a different host, it's cross-domain
+            redirectHost != requestHost
+        } catch (e: Exception) {
+            log.warn("Failed to determine if cross-domain: ${e.message}")
+            false
+        }
     }
 
     private fun isSecureRequest(request: HttpServletRequest): Boolean {

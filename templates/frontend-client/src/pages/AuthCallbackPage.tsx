@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { setTokens } from '@/lib/api';
 
 export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
@@ -16,10 +17,21 @@ export default function AuthCallbackPage() {
       return;
     }
 
-    // Cookies are already set by backend, just refresh user and redirect
+    // Get tokens from URL (sent by auth server for cross-domain auth)
+    const token = searchParams.get('token');
+    const refreshToken = searchParams.get('refreshToken');
+
     const handleCallback = async () => {
       try {
+        // Store tokens if provided in URL
+        if (token) {
+          setTokens(token, refreshToken || undefined);
+        }
+
+        // Refresh user data
         await refreshUser();
+
+        // Clean URL by removing tokens
         navigate('/dashboard', { replace: true });
       } catch {
         setError('Failed to complete authentication');

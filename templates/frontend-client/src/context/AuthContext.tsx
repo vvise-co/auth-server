@@ -5,7 +5,7 @@ import { getCurrentUser, logout as apiLogout, getAuthServerUrl } from '@/lib/api
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
+  login: (provider?: 'google' | 'github' | 'microsoft') => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   isAdmin: boolean;
@@ -32,11 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
   }, []);
 
-  const login = () => {
-    // Redirect to auth server's login page with callback to this app
+  const login = (provider: 'google' | 'github' | 'microsoft' = 'google') => {
+    // Redirect to auth server's OAuth endpoint with callback to this app
     const callbackUrl = `${window.location.origin}/auth/callback`;
     const authServerUrl = getAuthServerUrl();
-    window.location.href = `${authServerUrl}/login?redirect_uri=${encodeURIComponent(callbackUrl)}`;
+    window.location.href = `${authServerUrl}/oauth2/authorization/${provider}?redirect_uri=${encodeURIComponent(callbackUrl)}`;
   };
 
   const logout = async () => {

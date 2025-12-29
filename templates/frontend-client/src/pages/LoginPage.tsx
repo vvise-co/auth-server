@@ -8,7 +8,6 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const error = searchParams.get('error');
-  const redirectUri = searchParams.get('redirect_uri');
 
   useEffect(() => {
     if (!loading && user) {
@@ -39,7 +38,7 @@ export default function LoginPage() {
         )}
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-          <OAuthButtons redirectUri={redirectUri || undefined} />
+          <OAuthButtons />
         </div>
 
         <p className="text-center text-sm text-gray-500 dark:text-gray-400">

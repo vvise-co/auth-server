@@ -21,11 +21,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5173,
     proxy: {
+      // Proxy API calls to backend during development
       '/api': 'http://localhost:8080',
-      '/oauth2': 'http://localhost:8080',
-      '/login/oauth2': 'http://localhost:8080',
     },
   },
 });

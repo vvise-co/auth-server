@@ -14,7 +14,7 @@
 #   --readme    Update README.md
 #   --env       Update .env.example
 #   --mvnw      Update Maven wrapper (mvnw and .mvn)
-#   --frontend  Update frontend pages and components
+#   --frontend  Update frontend to React SPA (replaces Next.js if present)
 #   --backend   Update backend source files (security, config)
 #   --scripts   Update shared lib files (api.ts, types.ts)
 
@@ -51,7 +51,7 @@ if [ -z "$TARGET_DIR" ]; then
   echo "  --readme    Update README.md"
   echo "  --env       Update .env.example files"
   echo "  --mvnw      Update Maven wrapper (mvnw and .mvn)"
-  echo "  --frontend  Update frontend pages and components"
+  echo "  --frontend  Update frontend to React SPA (replaces Next.js if present)"
   echo "  --backend   Update backend source files (security, config)"
   echo "  --scripts   Update shared lib files (api.ts, types.ts)"
   exit 1
@@ -199,74 +199,111 @@ if [ "$UPDATE_MVNW" = true ]; then
   fi
 fi
 
-# Update frontend pages and components (React SPA)
+# Update frontend (React SPA - replaces Next.js if present)
 if [ "$UPDATE_FRONTEND" = true ]; then
-  echo -e "${GREEN}Updating frontend pages and components...${NC}"
+  echo -e "${GREEN}Updating frontend to React SPA...${NC}"
 
-  if [ -d "$TARGET_DIR/frontend/src" ]; then
-    # Check if this is a Next.js project that needs migration
-    if [ -f "$TARGET_DIR/frontend/next.config.js" ] || [ -d "$TARGET_DIR/frontend/src/app" ]; then
-      echo -e "${YELLOW}Detected Next.js project - migration to React SPA required${NC}"
-      echo -e "${YELLOW}Please backup your frontend and run init-project.sh for a fresh React SPA${NC}"
-    else
-      # Update React SPA components
-      TEMPLATE_SRC="$TEMPLATE_DIR/frontend-client/src"
-      TARGET_SRC="$TARGET_DIR/frontend/src"
+  # Check if this is a Next.js project that needs migration
+  IS_NEXTJS=false
+  if [ -f "$TARGET_DIR/frontend/next.config.js" ] || [ -d "$TARGET_DIR/frontend/src/app" ] || [ -f "$TARGET_DIR/frontend/src/middleware.ts" ]; then
+    IS_NEXTJS=true
+    echo -e "${YELLOW}Detected Next.js project - migrating to React SPA...${NC}"
+  fi
 
-      # Update pages
-      if [ -d "$TEMPLATE_SRC/pages" ]; then
-        mkdir -p "$TARGET_SRC/pages"
-        for file in "$TEMPLATE_SRC/pages"/*.tsx; do
-          if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            cp "$file" "$TARGET_SRC/pages/"
-            UPDATED+=("frontend/src/pages/$filename")
-          fi
-        done
-      fi
-
-      # Update components
-      if [ -d "$TEMPLATE_SRC/components" ]; then
-        mkdir -p "$TARGET_SRC/components"
-        for file in "$TEMPLATE_SRC/components"/*.tsx; do
-          if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            cp "$file" "$TARGET_SRC/components/"
-            UPDATED+=("frontend/src/components/$filename")
-          fi
-        done
-      fi
-
-      # Update context
-      if [ -d "$TEMPLATE_SRC/context" ]; then
-        mkdir -p "$TARGET_SRC/context"
-        for file in "$TEMPLATE_SRC/context"/*.tsx; do
-          if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            cp "$file" "$TARGET_SRC/context/"
-            UPDATED+=("frontend/src/context/$filename")
-          fi
-        done
-      fi
-
-      # Update App.tsx
-      if [ -f "$TEMPLATE_SRC/App.tsx" ]; then
-        cp "$TEMPLATE_SRC/App.tsx" "$TARGET_SRC/"
-        UPDATED+=("frontend/src/App.tsx")
-      fi
-
-      # Update vite.config.ts
-      if [ -f "$TEMPLATE_DIR/frontend-client/vite.config.ts" ]; then
-        cp "$TEMPLATE_DIR/frontend-client/vite.config.ts" "$TARGET_DIR/frontend/"
-        UPDATED+=("frontend/vite.config.ts")
-      fi
-
-      # Update tailwind.config.ts
-      if [ -f "$TEMPLATE_DIR/frontend-client/tailwind.config.ts" ]; then
-        cp "$TEMPLATE_DIR/frontend-client/tailwind.config.ts" "$TARGET_DIR/frontend/"
-        UPDATED+=("frontend/tailwind.config.ts")
-      fi
+  if [ -d "$TARGET_DIR/frontend" ]; then
+    # Backup package.json name if exists
+    FRONTEND_NAME="frontend"
+    if [ -f "$TARGET_DIR/frontend/package.json" ]; then
+      FRONTEND_NAME=$(grep -o '"name": *"[^"]*"' "$TARGET_DIR/frontend/package.json" | sed 's/"name": *"\([^"]*\)"/\1/' || echo "frontend")
     fi
+
+    if [ "$IS_NEXTJS" = true ]; then
+      # Remove Next.js specific files and directories
+      echo -e "${YELLOW}Removing Next.js files...${NC}"
+      rm -f "$TARGET_DIR/frontend/next.config.js" 2>/dev/null || true
+      rm -f "$TARGET_DIR/frontend/next.config.mjs" 2>/dev/null || true
+      rm -f "$TARGET_DIR/frontend/next-env.d.ts" 2>/dev/null || true
+      rm -rf "$TARGET_DIR/frontend/.next" 2>/dev/null || true
+      rm -rf "$TARGET_DIR/frontend/src/app" 2>/dev/null || true
+      rm -f "$TARGET_DIR/frontend/src/middleware.ts" 2>/dev/null || true
+      rm -rf "$TARGET_DIR/frontend/src/lib/auth.ts" 2>/dev/null || true
+      rm -rf "$TARGET_DIR/frontend/src/lib/auth-utils.ts" 2>/dev/null || true
+      UPDATED+=("Next.js files (removed)")
+    fi
+
+    # Copy all template frontend files
+    TEMPLATE_FRONTEND="$TEMPLATE_DIR/frontend-client"
+
+    # Copy root config files
+    cp "$TEMPLATE_FRONTEND/package.json" "$TARGET_DIR/frontend/"
+    cp "$TEMPLATE_FRONTEND/vite.config.ts" "$TARGET_DIR/frontend/"
+    cp "$TEMPLATE_FRONTEND/tsconfig.json" "$TARGET_DIR/frontend/"
+    cp "$TEMPLATE_FRONTEND/tsconfig.node.json" "$TARGET_DIR/frontend/" 2>/dev/null || true
+    cp "$TEMPLATE_FRONTEND/tailwind.config.ts" "$TARGET_DIR/frontend/"
+    cp "$TEMPLATE_FRONTEND/postcss.config.js" "$TARGET_DIR/frontend/"
+    cp "$TEMPLATE_FRONTEND/index.html" "$TARGET_DIR/frontend/"
+    UPDATED+=("frontend/package.json" "frontend/vite.config.ts" "frontend/tsconfig.json" "frontend/tailwind.config.ts" "frontend/index.html")
+
+    # Update package.json name
+    sed -i "s/\"name\": *\"[^\"]*\"/\"name\": \"$FRONTEND_NAME\"/" "$TARGET_DIR/frontend/package.json"
+
+    # Copy src files
+    mkdir -p "$TARGET_DIR/frontend/src"
+
+    # Copy main entry files
+    cp "$TEMPLATE_FRONTEND/src/main.tsx" "$TARGET_DIR/frontend/src/"
+    cp "$TEMPLATE_FRONTEND/src/App.tsx" "$TARGET_DIR/frontend/src/"
+    cp "$TEMPLATE_FRONTEND/src/index.css" "$TARGET_DIR/frontend/src/"
+    cp "$TEMPLATE_FRONTEND/src/vite-env.d.ts" "$TARGET_DIR/frontend/src/" 2>/dev/null || true
+    UPDATED+=("frontend/src/main.tsx" "frontend/src/App.tsx" "frontend/src/index.css")
+
+    # Copy pages
+    mkdir -p "$TARGET_DIR/frontend/src/pages"
+    for file in "$TEMPLATE_FRONTEND/src/pages"/*.tsx; do
+      if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        cp "$file" "$TARGET_DIR/frontend/src/pages/"
+        UPDATED+=("frontend/src/pages/$filename")
+      fi
+    done
+
+    # Copy components
+    mkdir -p "$TARGET_DIR/frontend/src/components"
+    for file in "$TEMPLATE_FRONTEND/src/components"/*.tsx; do
+      if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        cp "$file" "$TARGET_DIR/frontend/src/components/"
+        UPDATED+=("frontend/src/components/$filename")
+      fi
+    done
+
+    # Copy context
+    mkdir -p "$TARGET_DIR/frontend/src/context"
+    for file in "$TEMPLATE_FRONTEND/src/context"/*.tsx; do
+      if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        cp "$file" "$TARGET_DIR/frontend/src/context/"
+        UPDATED+=("frontend/src/context/$filename")
+      fi
+    done
+
+    # Copy lib
+    mkdir -p "$TARGET_DIR/frontend/src/lib"
+    for file in "$TEMPLATE_FRONTEND/src/lib"/*.ts; do
+      if [ -f "$file" ]; then
+        filename=$(basename "$file")
+        cp "$file" "$TARGET_DIR/frontend/src/lib/"
+        UPDATED+=("frontend/src/lib/$filename")
+      fi
+    done
+
+    # Copy public directory
+    if [ -d "$TEMPLATE_FRONTEND/public" ]; then
+      mkdir -p "$TARGET_DIR/frontend/public"
+      cp -r "$TEMPLATE_FRONTEND/public/"* "$TARGET_DIR/frontend/public/" 2>/dev/null || true
+    fi
+
+    echo -e "${YELLOW}Note: Run 'npm install' in frontend directory to install new dependencies${NC}"
   fi
 fi
 
@@ -349,8 +386,8 @@ if [ "$UPDATE_BACKEND" = true ]; then
   fi
 fi
 
-# Update shared lib files
-if [ "$UPDATE_SCRIPTS" = true ]; then
+# Update shared lib files (only if --scripts is used without --frontend)
+if [ "$UPDATE_SCRIPTS" = true ] && [ "$UPDATE_FRONTEND" = false ]; then
   echo -e "${GREEN}Updating shared lib files...${NC}"
 
   # Update frontend lib files (api.ts, types.ts)
@@ -382,7 +419,8 @@ fi
 echo ""
 echo -e "${YELLOW}Note:${NC} Review the changes and test your application."
 echo "You may need to:"
-echo "  1. Rebuild Docker images: docker build -t your-app ."
-echo "  2. Restart services if running locally"
-echo "  3. Redeploy to Koyeb if deployed"
+echo "  1. Run 'cd frontend && npm install' to install dependencies"
+echo "  2. Rebuild Docker images: docker build -t your-app ."
+echo "  3. Restart services if running locally"
+echo "  4. Redeploy to Koyeb if deployed"
 echo ""
