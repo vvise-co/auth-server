@@ -256,6 +256,12 @@ if [ "$UPDATE_FRONTEND" = true ]; then
       cp "$TEMPLATE_DIR/frontend-client/src/middleware.ts" "$TARGET_DIR/frontend/src/"
       UPDATED+=("frontend/src/middleware.ts")
     fi
+
+    # Update next.config.js (required for standalone output)
+    if [ -f "$TEMPLATE_DIR/frontend-client/next.config.js" ]; then
+      cp "$TEMPLATE_DIR/frontend-client/next.config.js" "$TARGET_DIR/frontend/"
+      UPDATED+=("frontend/next.config.js")
+    fi
   fi
 fi
 
