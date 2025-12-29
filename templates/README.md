@@ -76,6 +76,39 @@ This creates a Koyeb-ready project with:
 - `.env.example` with all required variables
 - Token introspection with Caffeine caching
 
+### Update an existing project
+
+If you have an existing project created from this template and want to update it with the latest changes:
+
+```bash
+cd templates/scripts
+./update-project.sh ~/Projects/@vvise-co/my-app
+```
+
+Update specific components only:
+
+```bash
+# Update everything
+./update-project.sh ~/Projects/@vvise-co/my-app --all
+
+# Update Docker files only (Dockerfile, nginx, docker-compose)
+./update-project.sh ~/Projects/@vvise-co/my-app --docker
+
+# Update Maven wrapper only (fixes "mvnw not found" errors)
+./update-project.sh ~/Projects/@vvise-co/my-app --mvnw
+
+# Update multiple components
+./update-project.sh ~/Projects/@vvise-co/my-app --docker --readme --env
+```
+
+Available options:
+- `--all` - Update everything (default if no options specified)
+- `--docker` - Update Dockerfile, nginx config, docker-compose
+- `--readme` - Update README.md
+- `--env` - Update .env.example files
+- `--mvnw` - Update Maven wrapper (mvnw and .mvn)
+- `--scripts` - Update shared lib files (auth.ts, api.ts, security classes)
+
 ## Directory Structure
 
 ```
@@ -89,6 +122,8 @@ templates/
 ├── backend-client/          # Spring Boot backend template
 │   ├── src/main/kotlin/
 │   ├── pom.xml
+│   ├── mvnw                 # Maven wrapper
+│   ├── .mvn/                # Maven wrapper config
 │   └── .env.example
 │
 ├── frontend-client/         # Next.js frontend template
@@ -102,7 +137,8 @@ templates/
 │   └── docker-compose.yml
 │
 └── scripts/
-    └── init-project.sh      # Project initializer
+    ├── init-project.sh      # Project initializer
+    └── update-project.sh    # Update existing projects
 ```
 
 ---

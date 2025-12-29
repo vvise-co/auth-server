@@ -1,13 +1,13 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 /**
- * OAuth callback page.
- * The auth server redirects here with tokens after successful authentication.
+ * OAuth callback content component.
  */
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -60,5 +60,26 @@ export default function AuthCallback() {
         <p className="mt-4 text-gray-600">Completing sign in...</p>
       </div>
     </div>
+  );
+}
+
+/**
+ * OAuth callback page.
+ * The auth server redirects here with tokens after successful authentication.
+ */
+export default function AuthCallback() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

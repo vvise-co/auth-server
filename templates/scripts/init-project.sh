@@ -24,6 +24,10 @@ mkdir -p "$TARGET_DIR"
 echo "Copying backend template..."
 cp -r "$TEMPLATE_DIR/backend-client" "$TARGET_DIR/backend"
 
+# Ensure mvnw is executable and remove target directory if exists
+chmod +x "$TARGET_DIR/backend/mvnw" 2>/dev/null || true
+rm -rf "$TARGET_DIR/backend/target" 2>/dev/null || true
+
 # Copy frontend template
 echo "Copying frontend template..."
 cp -r "$TEMPLATE_DIR/frontend-client" "$TARGET_DIR/frontend"
@@ -168,4 +172,14 @@ echo ""
 echo "No JWT_SECRET required! Token validation is done via introspection."
 echo "No NEXT_PUBLIC_API_URL required! Nginx proxies /api to backend."
 echo "No NEXT_PUBLIC_APP_URL required! OAuth callbacks use browser origin."
+echo ""
+echo "============================================"
+echo "UPDATING YOUR PROJECT"
+echo "============================================"
+echo ""
+echo "To update your project with latest template changes:"
+echo "  cd $SCRIPT_DIR"
+echo "  ./update-project.sh $TARGET_DIR"
+echo ""
+echo "Options: --docker --readme --env --mvnw --scripts --all"
 echo ""
