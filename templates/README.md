@@ -537,6 +537,28 @@ export default async function Page() {
 
 ## Troubleshooting
 
+### OAuth login redirects back to login page (no dashboard)
+
+This is usually caused by **misconfigured OAuth URLs on the auth server**. The auth server needs three URLs configured correctly:
+
+1. **`OAUTH2_BASE_URL`** - Where OAuth providers (Google, GitHub) redirect BACK to after authentication
+   - Must be the auth server's public URL: `https://auth-xxx.koyeb.app`
+   - If wrong, Google/GitHub will redirect to the wrong place and OAuth will fail silently
+
+2. **`OAUTH2_REDIRECT_URI`** - Where the auth server redirects users after successful OAuth
+   - For auth server direct use: `https://auth-xxx.koyeb.app/auth/callback`
+   - For client apps: Set in the request via `redirect_uri` parameter
+
+3. **OAuth Provider Console** - The callback URL registered in Google/GitHub/Microsoft
+   - Must be: `https://auth-xxx.koyeb.app/login/oauth2/code/{provider}`
+   - This must match `OAUTH2_BASE_URL` exactly
+
+**Debug steps:**
+1. Check auth server logs for `=== OAuth2 Authentication Success ===` message
+2. If no logs, OAuth provider redirect is failing - check `OAUTH2_BASE_URL`
+3. Visit `https://your-auth-server/api/auth/debug/config` to see current settings
+4. Verify OAuth provider console has correct callback URL
+
 ### "Token validation failed"
 - Ensure `AUTH_SERVER_URL` is correct and reachable
 - Check that the auth server is running

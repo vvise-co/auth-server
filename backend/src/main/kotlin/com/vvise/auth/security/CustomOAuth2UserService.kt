@@ -17,7 +17,11 @@ class CustomOAuth2UserService(
     private val log = LoggerFactory.getLogger(CustomOAuth2UserService::class.java)
 
     override fun loadUser(userRequest: OAuth2UserRequest): OAuth2User {
+        log.info("=== Loading OAuth2 User ===")
+        log.info("Provider: ${userRequest.clientRegistration.registrationId}")
+
         val oAuth2User = super.loadUser(userRequest)
+        log.info("OAuth2 user loaded from provider: ${oAuth2User.name}")
 
         return try {
             processOAuth2User(userRequest, oAuth2User)

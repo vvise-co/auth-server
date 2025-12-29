@@ -37,24 +37,32 @@ class OAuth2AuthenticationSuccessHandler(
         response: HttpServletResponse,
         authentication: Authentication
     ) {
+        log.info("=== OAuth2 Authentication Success ===")
+        log.info("User authenticated: ${authentication.name}")
+        log.info("Principal type: ${authentication.principal::class.simpleName}")
+
         val targetUrl = determineTargetUrl(request, authentication)
+        log.info("Target redirect URL: $targetUrl")
 
         // Clear the redirect URI cookie
         clearRedirectUriCookie(response)
 
         if (response.isCommitted) {
-            log.debug("Response has already been committed. Unable to redirect to $targetUrl")
+            log.warn("Response has already been committed. Unable to redirect to $targetUrl")
             return
         }
 
         clearAuthenticationAttributes(request)
+        log.info("Redirecting user to: $targetUrl")
         redirectStrategy.sendRedirect(request, response, targetUrl)
     }
 
     private fun determineTargetUrl(request: HttpServletRequest, authentication: Authentication): String {
         val userPrincipal = authentication.principal as UserPrincipal
+        log.info("Generating tokens for user: ${userPrincipal.id}")
 
         val accessToken = tokenProvider.generateAccessToken(userPrincipal)
+        log.info("Access token generated (length: ${accessToken.length})")
 
         // Get full user to create refresh token
         val user = userService.findById(userPrincipal.id)
@@ -65,14 +73,22 @@ class OAuth2AuthenticationSuccessHandler(
 
         // Create new refresh token
         val refreshToken = refreshTokenService.createRefreshToken(user)
+        log.info("Refresh token created")
 
         // Get redirect URI from cookie or use default
-        val redirectUri = getRedirectUriFromCookie(request) ?: defaultRedirectUri
+        val cookieRedirectUri = getRedirectUriFromCookie(request)
+        val redirectUri = cookieRedirectUri ?: defaultRedirectUri
+        log.info("Cookie redirect URI: $cookieRedirectUri")
+        log.info("Default redirect URI: $defaultRedirectUri")
+        log.info("Using redirect URI: $redirectUri")
 
-        return UriComponentsBuilder.fromUriString(redirectUri)
+        val targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
             .queryParam("token", accessToken)
             .queryParam("refreshToken", refreshToken.token)
             .build().toUriString()
+
+        log.info("Final target URL (truncated): ${targetUrl.take(100)}...")
+        return targetUrl
     }
 
     private fun getRedirectUriFromCookie(request: HttpServletRequest): String? {

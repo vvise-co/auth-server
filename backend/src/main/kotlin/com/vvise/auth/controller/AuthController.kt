@@ -84,6 +84,19 @@ class AuthController(
         )
     }
 
+    @GetMapping("/debug/config")
+    fun debugConfig(): ResponseEntity<Map<String, Any?>> {
+        return ResponseEntity.ok(
+            mapOf(
+                "oauth2_base_url" to System.getenv("OAUTH2_BASE_URL"),
+                "oauth2_redirect_uri" to System.getenv("OAUTH2_REDIRECT_URI"),
+                "cors_allowed_origins" to System.getenv("CORS_ALLOWED_ORIGINS"),
+                "node_env" to System.getenv("NODE_ENV"),
+                "server_port" to System.getenv("SERVER_PORT")
+            )
+        )
+    }
+
     /**
      * Token introspection endpoint (RFC 7662).
      * Client applications can use this to validate tokens without needing the JWT secret.
