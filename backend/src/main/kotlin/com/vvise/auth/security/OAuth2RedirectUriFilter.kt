@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
 
@@ -16,6 +17,8 @@ import org.springframework.web.filter.OncePerRequestFilter
  */
 @Component
 class OAuth2RedirectUriFilter : OncePerRequestFilter() {
+
+    private val log = LoggerFactory.getLogger(OAuth2RedirectUriFilter::class.java)
 
     companion object {
         const val REDIRECT_URI_COOKIE = "oauth2_redirect_uri"
@@ -31,14 +34,22 @@ class OAuth2RedirectUriFilter : OncePerRequestFilter() {
         // Only process OAuth2 authorization requests
         if (request.requestURI.startsWith("/oauth2/authorization/")) {
             val redirectUri = request.getParameter(REDIRECT_URI_PARAM)
+            log.debug("OAuth2 authorization request: URI={}, redirect_uri={}", request.requestURI, redirectUri)
 
             if (!redirectUri.isNullOrBlank()) {
+                // Check if request is behind HTTPS proxy
+                val forwardedProto = request.getHeader("X-Forwarded-Proto")
+                val isSecure = request.isSecure || forwardedProto == "https"
+
+                log.debug("Setting redirect_uri cookie: value={}, secure={}, forwardedProto={}",
+                    redirectUri, isSecure, forwardedProto)
+
                 // Store redirect_uri in a cookie
                 val cookie = Cookie(REDIRECT_URI_COOKIE, redirectUri)
                 cookie.path = "/"
                 cookie.maxAge = COOKIE_MAX_AGE
                 cookie.isHttpOnly = true
-                cookie.secure = request.isSecure
+                cookie.secure = isSecure
                 response.addCookie(cookie)
             }
         }

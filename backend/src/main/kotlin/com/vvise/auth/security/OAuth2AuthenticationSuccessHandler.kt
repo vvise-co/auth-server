@@ -76,15 +76,22 @@ class OAuth2AuthenticationSuccessHandler(
     }
 
     private fun getRedirectUriFromCookie(request: HttpServletRequest): String? {
+        log.debug("Looking for redirect_uri cookie. Available cookies: {}",
+            request.cookies?.map { "${it.name}=${it.value}" }?.joinToString(", ") ?: "none")
+
         val cookie = request.cookies?.find { it.name == REDIRECT_URI_COOKIE }
         val redirectUri = cookie?.value
 
         if (redirectUri.isNullOrBlank()) {
+            log.debug("No redirect_uri cookie found, will use default")
             return null
         }
 
+        log.debug("Found redirect_uri cookie: {}", redirectUri)
+
         // Validate the redirect URI
         return if (isValidRedirectUri(redirectUri)) {
+            log.debug("Redirect URI is valid: {}", redirectUri)
             redirectUri
         } else {
             log.warn("Invalid redirect URI in cookie: $redirectUri")
