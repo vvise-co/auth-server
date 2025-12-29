@@ -4,20 +4,46 @@ export async function POST(request: NextRequest) {
   try {
     const { token, refreshToken } = await request.json();
 
+    console.log('[Auth Callback POST] Received request, tokens present:', { token: !!token, refreshToken: !!refreshToken });
+
     if (!token || !refreshToken) {
+      console.log('[Auth Callback POST] Missing tokens');
       return NextResponse.json(
         { error: 'Missing tokens' },
         { status: 400 }
       );
     }
 
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Check if request is behind HTTPS proxy (Koyeb, etc.)
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const host = request.headers.get('host') || '';
+    const effectiveHost = forwardedHost || host;
+
+    // Use secure cookies if:
+    // 1. X-Forwarded-Proto is https (set by Koyeb/Railway load balancer)
+    // 2. OR the host contains koyeb/railway (cloud deployment)
+    // 3. OR NODE_ENV is production AND we're not on localhost
+    const isCloudHost = effectiveHost.includes('koyeb') || effectiveHost.includes('railway');
+    const isProductionEnv = process.env.NODE_ENV === 'production' && !effectiveHost.includes('localhost');
+    const useSecureCookies = forwardedProto === 'https' || isCloudHost || isProductionEnv;
+
+    console.log('[Auth Callback POST] Cookie settings:', {
+      forwardedProto,
+      forwardedHost,
+      host,
+      effectiveHost,
+      isCloudHost,
+      isProductionEnv,
+      useSecureCookies
+    });
+
     const response = NextResponse.json({ success: true });
 
     // Set access token cookie
     response.cookies.set('access_token', token, {
       httpOnly: true,
-      secure: isProduction,
+      secure: useSecureCookies,
       sameSite: 'lax',
       maxAge: 60 * 15, // 15 minutes
       path: '/',
@@ -26,15 +52,16 @@ export async function POST(request: NextRequest) {
     // Set refresh token cookie
     response.cookies.set('refresh_token', refreshToken, {
       httpOnly: true,
-      secure: isProduction,
+      secure: useSecureCookies,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
     });
 
+    console.log('[Auth Callback POST] Cookies set successfully');
     return response;
   } catch (error) {
-    console.error('Auth callback error:', error);
+    console.error('[Auth Callback POST] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

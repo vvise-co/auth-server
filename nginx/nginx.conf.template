@@ -20,17 +20,24 @@ server {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    # Preserve X-Forwarded-Proto from upstream (Koyeb LB), fallback to $scheme
-    # Use map variable to properly handle empty header
-    set $forwarded_proto $http_x_forwarded_proto;
-    set $final_proto $forwarded_proto;
-    if ($forwarded_proto = '') {
-        set $final_proto $scheme;
-    }
-    proxy_set_header X-Forwarded-Proto $final_proto;
+    # Pass X-Forwarded-Proto from upstream load balancer (Koyeb sets this)
+    # If not set by LB, it will be empty but that's OK - app handles it
+    proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
     proxy_set_header X-Forwarded-Host $host;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
+
+    # Login page
+    location /login {
+        proxy_pass http://frontend/login;
+        proxy_read_timeout 90s;
+    }
+
+    # Auth callback page (frontend page that handles token storage)
+    location /auth/callback {
+        proxy_pass http://frontend/auth/callback;
+        proxy_read_timeout 90s;
+    }
 
     # Frontend API routes (Next.js API routes that need to run on frontend)
     location /api/auth/callback {
