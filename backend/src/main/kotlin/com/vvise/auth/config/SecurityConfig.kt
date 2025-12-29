@@ -5,6 +5,7 @@ import com.vvise.auth.security.CustomOidcUserService
 import com.vvise.auth.security.JwtAuthenticationFilter
 import com.vvise.auth.security.OAuth2AuthenticationFailureHandler
 import com.vvise.auth.security.OAuth2AuthenticationSuccessHandler
+import com.vvise.auth.security.OAuth2RedirectUriFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
@@ -23,6 +24,7 @@ import org.springframework.web.cors.CorsConfigurationSource
 @EnableMethodSecurity
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val oAuth2RedirectUriFilter: OAuth2RedirectUriFilter,
     private val customOAuth2UserService: CustomOAuth2UserService,
     private val customOidcUserService: CustomOidcUserService,
     private val oAuth2AuthenticationSuccessHandler: OAuth2AuthenticationSuccessHandler,
@@ -56,6 +58,7 @@ class SecurityConfig(
                     .failureHandler(oAuth2AuthenticationFailureHandler)
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(oAuth2RedirectUriFilter, UsernamePasswordAuthenticationFilter::class.java)
 
         return http.build()
     }

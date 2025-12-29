@@ -21,9 +21,30 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Login page - redirect to dashboard if already authenticated
-  if (pathname === '/login' && isAuthenticated) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Login page handling
+  if (pathname === '/login') {
+    // Redirect to dashboard if already authenticated
+    if (isAuthenticated) {
+      const redirectUri = request.nextUrl.searchParams.get('redirect_uri');
+      if (redirectUri) {
+        return NextResponse.redirect(new URL(redirectUri));
+      }
+      return NextResponse.redirect(new URL('/dashboard', request.url));
+    }
+
+    // Store redirect_uri in cookie for OAuth flow (if provided)
+    const redirectUri = request.nextUrl.searchParams.get('redirect_uri');
+    if (redirectUri) {
+      const response = NextResponse.next();
+      response.cookies.set('oauth2_redirect_uri', redirectUri, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 10, // 10 minutes
+      });
+      return response;
+    }
   }
 
   return NextResponse.next();

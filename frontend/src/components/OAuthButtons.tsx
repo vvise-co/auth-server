@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/api';
 
 const providers = [
@@ -64,8 +65,24 @@ const providers = [
 ];
 
 export default function OAuthButtons() {
+  const [redirectUri, setRedirectUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get redirect_uri from URL search params (passed from client apps)
+    const params = new URLSearchParams(window.location.search);
+    const uri = params.get('redirect_uri');
+    if (uri) {
+      setRedirectUri(uri);
+    }
+  }, []);
+
   const handleOAuthLogin = (providerId: string) => {
-    window.location.href = `${API_URL}/oauth2/authorization/${providerId}`;
+    // Build OAuth URL with optional redirect_uri for client app redirects
+    let oauthUrl = `${API_URL}/oauth2/authorization/${providerId}`;
+    if (redirectUri) {
+      oauthUrl += `?redirect_uri=${encodeURIComponent(redirectUri)}`;
+    }
+    window.location.href = oauthUrl;
   };
 
   return (

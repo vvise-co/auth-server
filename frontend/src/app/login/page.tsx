@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 import { getCurrentUser } from '@/lib/auth';
 import OAuthButtons from '@/components/OAuthButtons';
 
@@ -7,35 +5,12 @@ interface LoginPageProps {
   searchParams: Promise<{ redirect_uri?: string }>;
 }
 
-async function setRedirectCookie(redirectUri: string) {
-  'use server';
-  const cookieStore = await cookies();
-  cookieStore.set('oauth2_redirect_uri', redirectUri, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 10, // 10 minutes
-  });
-}
-
 export default async function LoginPage({ searchParams }: LoginPageProps) {
+  // Note: Authentication redirects are handled by middleware
+  // The redirect_uri cookie is also set by middleware
   const user = await getCurrentUser();
   const params = await searchParams;
   const redirectUri = params.redirect_uri;
-
-  if (user) {
-    // If there's a redirect_uri, redirect there with a message to complete auth
-    if (redirectUri) {
-      redirect(redirectUri);
-    }
-    redirect('/dashboard');
-  }
-
-  // Store redirect_uri in cookie for the OAuth flow via Server Action
-  if (redirectUri) {
-    await setRedirectCookie(redirectUri);
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
