@@ -1,91 +1,73 @@
-'use client';
+import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { User, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { User, LogOut, Settings, ChevronDown } from 'lucide-react';
-import type { User as UserType } from '@/lib/types';
-
-interface UserMenuProps {
-  user: UserType;
-}
-
-const AUTH_SERVER_URL = process.env.NEXT_PUBLIC_AUTH_SERVER_URL || 'http://localhost:8080';
-
-export default function UserMenu({ user }: UserMenuProps) {
+export default function UserMenu() {
+  const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (!user) return null;
 
   const handleLogout = async () => {
-    try {
-      // Clear local cookies first
-      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-
-      // Redirect to auth server logout, which will redirect back to our login page
-      const returnUrl = `${window.location.origin}/login`;
-      window.location.href = `${AUTH_SERVER_URL}/api/auth/logout?redirect_uri=${encodeURIComponent(returnUrl)}`;
-    } catch {
-      // If local logout fails, still redirect to auth server logout
-      const returnUrl = `${window.location.origin}/login`;
-      window.location.href = `${AUTH_SERVER_URL}/api/auth/logout?redirect_uri=${encodeURIComponent(returnUrl)}`;
-    }
-  };
-
-  const handleProfile = () => {
     setIsOpen(false);
-    // Redirect to auth server profile management
-    window.location.href = `${AUTH_SERVER_URL}/profile`;
+    await logout();
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        {user.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt={user.name}
-            className="w-8 h-8 rounded-full"
-          />
+        {user.imageUrl ? (
+          <img src={user.imageUrl} alt={user.name} className="w-8 h-8 rounded-full" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-            <User className="w-4 h-4 text-gray-600" />
+          <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium">
+            {user.name?.charAt(0).toUpperCase() || 'U'}
           </div>
         )}
-        <span className="text-sm font-medium text-gray-700">{user.name}</span>
+        <span className="text-gray-700 dark:text-gray-200 font-medium hidden sm:block">
+          {user.name}
+        </span>
         <ChevronDown className="w-4 h-4 text-gray-500" />
       </button>
 
       {isOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 py-1 border">
-            <div className="px-4 py-2 border-b">
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
-
-            <button
-              onClick={handleProfile}
-              className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Profile
-            </button>
-
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign out
-            </button>
+        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
           </div>
-        </>
+
+          <Link
+            to="/profile"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <User className="w-4 h-4" />
+            Profile
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
       )}
     </div>
   );

@@ -1,100 +1,73 @@
-'use client';
+import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { User, LogOut, ChevronDown } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { User } from '@/lib/types';
-import { LogOut, User as UserIcon, ChevronDown, Settings } from 'lucide-react';
-
-interface UserMenuProps {
-  user: User;
-}
-
-export default function UserMenu({ user }: UserMenuProps) {
+export default function UserMenu() {
+  const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const router = useRouter();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  if (!user) return null;
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      // Force full page navigation to ensure cookies are cleared
-      window.location.replace('/login');
-    } catch {
-      setIsLoggingOut(false);
-    }
-  };
-
-  const handleProfile = () => {
     setIsOpen(false);
-    router.push('/profile');
+    await logout();
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         {user.imageUrl ? (
-          <img
-            src={user.imageUrl}
-            alt={user.name}
-            className="h-8 w-8 rounded-full"
-          />
+          <img src={user.imageUrl} alt={user.name} className="w-8 h-8 rounded-full" />
         ) : (
-          <div className="h-8 w-8 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center">
-            <UserIcon className="h-4 w-4 text-primary-600 dark:text-primary-400" />
+          <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium">
+            {user.name?.charAt(0).toUpperCase() || 'U'}
           </div>
         )}
-        <span className="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-200">
+        <span className="text-gray-700 dark:text-gray-200 font-medium hidden sm:block">
           {user.name}
         </span>
-        <ChevronDown className="h-4 w-4 text-gray-500" />
+        <ChevronDown className="w-4 h-4 text-gray-500" />
       </button>
 
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-10"
-            onClick={() => setIsOpen(false)}
-          />
-
-          {/* Dropdown */}
-          <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-20">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {user.name}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user.email}
-              </p>
-            </div>
-
-            <div className="p-1">
-              <button
-                onClick={handleProfile}
-                className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Profile</span>
-              </button>
-
-              <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="w-full flex items-center space-x-3 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors disabled:opacity-50"
-              >
-                <LogOut className="h-4 w-4" />
-                <span>{isLoggingOut ? 'Signing out...' : 'Sign out'}</span>
-              </button>
-            </div>
+        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{user.name}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
           </div>
-        </>
+
+          <Link
+            to="/profile"
+            onClick={() => setIsOpen(false)}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <User className="w-4 h-4" />
+            Profile
+          </Link>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </div>
       )}
     </div>
   );

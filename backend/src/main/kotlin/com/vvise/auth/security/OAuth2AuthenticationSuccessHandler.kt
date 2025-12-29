@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.stereotype.Component
-import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 
 @Component
@@ -30,6 +29,10 @@ class OAuth2AuthenticationSuccessHandler(
 
     companion object {
         const val REDIRECT_URI_COOKIE = "oauth2_redirect_uri"
+        const val ACCESS_TOKEN_COOKIE = "access_token"
+        const val REFRESH_TOKEN_COOKIE = "refresh_token"
+        const val ACCESS_TOKEN_MAX_AGE = 60 * 15 // 15 minutes
+        const val REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
     }
 
     override fun onAuthenticationSuccess(
@@ -41,7 +44,34 @@ class OAuth2AuthenticationSuccessHandler(
         log.info("User authenticated: ${authentication.name}")
         log.info("Principal type: ${authentication.principal::class.simpleName}")
 
-        val targetUrl = determineTargetUrl(request, authentication)
+        val userPrincipal = authentication.principal as UserPrincipal
+        log.info("Generating tokens for user: ${userPrincipal.id}")
+
+        // Generate access token
+        val accessToken = tokenProvider.generateAccessToken(userPrincipal)
+        log.info("Access token generated (length: ${accessToken.length})")
+
+        // Get full user to create refresh token
+        val user = userService.findById(userPrincipal.id)
+            ?: throw RuntimeException("User not found")
+
+        // Delete existing refresh tokens for this user
+        refreshTokenService.deleteByUser(user)
+
+        // Create new refresh token
+        val refreshToken = refreshTokenService.createRefreshToken(user)
+        log.info("Refresh token created")
+
+        // Determine if we should use secure cookies
+        val isSecure = isSecureRequest(request)
+        log.info("Using secure cookies: $isSecure")
+
+        // Set auth cookies directly on response
+        setAuthCookies(response, accessToken, refreshToken.token, isSecure)
+        log.info("Auth cookies set on response")
+
+        // Determine redirect URL (without tokens in URL)
+        val targetUrl = determineTargetUrl(request)
         log.info("Target redirect URL: $targetUrl")
 
         // Clear the redirect URI cookie
@@ -57,24 +87,7 @@ class OAuth2AuthenticationSuccessHandler(
         redirectStrategy.sendRedirect(request, response, targetUrl)
     }
 
-    private fun determineTargetUrl(request: HttpServletRequest, authentication: Authentication): String {
-        val userPrincipal = authentication.principal as UserPrincipal
-        log.info("Generating tokens for user: ${userPrincipal.id}")
-
-        val accessToken = tokenProvider.generateAccessToken(userPrincipal)
-        log.info("Access token generated (length: ${accessToken.length})")
-
-        // Get full user to create refresh token
-        val user = userService.findById(userPrincipal.id)
-            ?: throw RuntimeException("User not found")
-
-        // Delete existing refresh tokens for this user
-        refreshTokenService.deleteByUser(user)
-
-        // Create new refresh token
-        val refreshToken = refreshTokenService.createRefreshToken(user)
-        log.info("Refresh token created")
-
+    private fun determineTargetUrl(request: HttpServletRequest): String {
         // Get redirect URI from cookie or use default
         val cookieRedirectUri = getRedirectUriFromCookie(request)
         val redirectUri = cookieRedirectUri ?: defaultRedirectUri
@@ -82,18 +95,74 @@ class OAuth2AuthenticationSuccessHandler(
         log.info("Default redirect URI: $defaultRedirectUri")
         log.info("Using redirect URI: $redirectUri")
 
-        val targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-            .queryParam("token", accessToken)
-            .queryParam("refreshToken", refreshToken.token)
-            .build().toUriString()
+        // Return the callback URL without tokens (cookies are already set)
+        return redirectUri
+    }
 
-        log.info("Final target URL (truncated): ${targetUrl.take(100)}...")
-        return targetUrl
+    private fun isSecureRequest(request: HttpServletRequest): Boolean {
+        // Check if request is behind HTTPS proxy
+        val forwardedProto = request.getHeader("X-Forwarded-Proto")
+        if (forwardedProto == "https") {
+            return true
+        }
+
+        // Check if direct HTTPS
+        if (request.isSecure) {
+            return true
+        }
+
+        // Check host for cloud deployment
+        val host = request.getHeader("X-Forwarded-Host") ?: request.getHeader("Host") ?: ""
+        if (host.contains("koyeb") || host.contains("railway")) {
+            return true
+        }
+
+        // Default to false for localhost development
+        return false
+    }
+
+    private fun setAuthCookies(
+        response: HttpServletResponse,
+        accessToken: String,
+        refreshToken: String,
+        secure: Boolean
+    ) {
+        // Access token cookie
+        val accessCookie = Cookie(ACCESS_TOKEN_COOKIE, accessToken).apply {
+            isHttpOnly = true
+            this.secure = secure
+            path = "/"
+            maxAge = ACCESS_TOKEN_MAX_AGE
+        }
+        // Set SameSite attribute
+        response.addHeader(
+            "Set-Cookie",
+            "${ACCESS_TOKEN_COOKIE}=$accessToken; Path=/; Max-Age=$ACCESS_TOKEN_MAX_AGE; HttpOnly; SameSite=Lax${if (secure) "; Secure" else ""}"
+        )
+
+        // Refresh token cookie
+        response.addHeader(
+            "Set-Cookie",
+            "${REFRESH_TOKEN_COOKIE}=$refreshToken; Path=/; Max-Age=$REFRESH_TOKEN_MAX_AGE; HttpOnly; SameSite=Lax${if (secure) "; Secure" else ""}"
+        )
+    }
+
+    fun clearAuthCookies(response: HttpServletResponse, secure: Boolean = true) {
+        response.addHeader(
+            "Set-Cookie",
+            "${ACCESS_TOKEN_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${if (secure) "; Secure" else ""}"
+        )
+        response.addHeader(
+            "Set-Cookie",
+            "${REFRESH_TOKEN_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${if (secure) "; Secure" else ""}"
+        )
     }
 
     private fun getRedirectUriFromCookie(request: HttpServletRequest): String? {
-        log.debug("Looking for redirect_uri cookie. Available cookies: {}",
-            request.cookies?.map { "${it.name}=${it.value}" }?.joinToString(", ") ?: "none")
+        log.debug(
+            "Looking for redirect_uri cookie. Available cookies: {}",
+            request.cookies?.map { "${it.name}=${it.value}" }?.joinToString(", ") ?: "none"
+        )
 
         val cookie = request.cookies?.find { it.name == REDIRECT_URI_COOKIE }
         val redirectUri = cookie?.value

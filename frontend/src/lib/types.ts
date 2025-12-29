@@ -2,7 +2,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
-  imageUrl: string | null;
+  imageUrl?: string;
   provider: string;
   roles: string[];
   createdAt: string;
@@ -16,7 +16,7 @@ export interface AuthResponse {
   user: User;
 }
 
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
+export interface ApiError {
+  message: string;
+  status: number;
 }

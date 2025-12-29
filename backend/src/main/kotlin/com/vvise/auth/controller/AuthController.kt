@@ -5,9 +5,12 @@ import com.vvise.auth.dto.RefreshTokenRequest
 import com.vvise.auth.dto.TokenIntrospectionResponse
 import com.vvise.auth.dto.UserDto
 import com.vvise.auth.security.JwtTokenProvider
+import com.vvise.auth.security.OAuth2AuthenticationSuccessHandler
 import com.vvise.auth.security.UserPrincipal
 import com.vvise.auth.service.RefreshTokenService
 import com.vvise.auth.service.UserService
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -18,7 +21,8 @@ import org.springframework.web.bind.annotation.*
 class AuthController(
     private val tokenProvider: JwtTokenProvider,
     private val refreshTokenService: RefreshTokenService,
-    private val userService: UserService
+    private val userService: UserService,
+    private val oAuth2SuccessHandler: OAuth2AuthenticationSuccessHandler
 ) {
 
     @GetMapping("/me")
@@ -59,8 +63,11 @@ class AuthController(
     @PostMapping("/logout")
     fun logout(
         @AuthenticationPrincipal userPrincipal: UserPrincipal?,
-        @RequestBody(required = false) request: RefreshTokenRequest?
+        @RequestBody(required = false) request: RefreshTokenRequest?,
+        httpRequest: HttpServletRequest,
+        httpResponse: HttpServletResponse
     ): ResponseEntity<Map<String, String>> {
+        // Invalidate refresh tokens
         if (request?.refreshToken != null) {
             refreshTokenService.deleteByToken(request.refreshToken)
         } else if (userPrincipal != null) {
@@ -70,7 +77,19 @@ class AuthController(
             }
         }
 
+        // Clear auth cookies
+        val isSecure = isSecureRequest(httpRequest)
+        oAuth2SuccessHandler.clearAuthCookies(httpResponse, isSecure)
+
         return ResponseEntity.ok(mapOf("message" to "Logged out successfully"))
+    }
+
+    private fun isSecureRequest(request: HttpServletRequest): Boolean {
+        val forwardedProto = request.getHeader("X-Forwarded-Proto")
+        if (forwardedProto == "https") return true
+        if (request.isSecure) return true
+        val host = request.getHeader("X-Forwarded-Host") ?: request.getHeader("Host") ?: ""
+        return host.contains("koyeb") || host.contains("railway")
     }
 
     @GetMapping("/providers")

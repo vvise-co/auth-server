@@ -1,73 +1,69 @@
-import { AuthResponse, User } from './types';
-
-// In unified deployment, NEXT_PUBLIC_API_URL should be empty or unset to use relative paths
-// In development with separate services, set NEXT_PUBLIC_API_URL=http://localhost:8080
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
+import { User } from './types';
 
 class ApiClient {
   private baseUrl: string;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string = '') {
     this.baseUrl = baseUrl;
   }
 
-  // Allow setting base URL dynamically for server-side requests
-  withBaseUrl(baseUrl: string): ApiClient {
-    return new ApiClient(baseUrl);
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  async fetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-
     const response = await fetch(url, {
       ...options,
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
       },
-      credentials: 'include',
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || 'Request failed');
+      const error = await response.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(error.message || `HTTP ${response.status}`);
     }
 
     return response.json();
   }
 
-  async getCurrentUser(accessToken: string): Promise<User> {
-    return this.request<User>('/api/auth/me', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+  async get<T>(endpoint: string): Promise<T> {
+    return this.fetch<T>(endpoint, { method: 'GET' });
   }
 
-  async refreshToken(refreshToken: string): Promise<AuthResponse> {
-    return this.request<AuthResponse>('/api/auth/refresh', {
+  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+    return this.fetch<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify({ refreshToken }),
+      body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async logout(refreshToken?: string, accessToken?: string): Promise<void> {
-    await this.request('/api/auth/logout', {
-      method: 'POST',
-      headers: accessToken
-        ? { Authorization: `Bearer ${accessToken}` }
-        : {},
-      body: refreshToken ? JSON.stringify({ refreshToken }) : '{}',
-    });
-  }
-
-  getOAuthUrl(provider: 'google' | 'github' | 'microsoft'): string {
-    return `${this.baseUrl}/oauth2/authorization/${provider}`;
+  async delete<T>(endpoint: string): Promise<T> {
+    return this.fetch<T>(endpoint, { method: 'DELETE' });
   }
 }
 
-export const apiClient = new ApiClient(API_URL);
-export { API_URL };
+export const api = new ApiClient();
+
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    return await api.get<User>('/api/auth/me');
+  } catch {
+    return null;
+  }
+}
+
+export async function getUsers(): Promise<User[]> {
+  return api.get<User[]>('/api/users');
+}
+
+export async function addAdminRole(userId: number): Promise<User> {
+  return api.post<User>(`/api/users/${userId}/admin`);
+}
+
+export async function removeAdminRole(userId: number): Promise<User> {
+  return api.delete<User>(`/api/users/${userId}/admin`);
+}
+
+export async function logout(): Promise<void> {
+  await api.post('/api/auth/logout');
+}

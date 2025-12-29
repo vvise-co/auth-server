@@ -28,14 +28,12 @@ cp -r "$TEMPLATE_DIR/backend-client" "$TARGET_DIR/backend"
 chmod +x "$TARGET_DIR/backend/mvnw" 2>/dev/null || true
 rm -rf "$TARGET_DIR/backend/target" 2>/dev/null || true
 
-# Copy frontend template
+# Copy frontend template (React SPA with Vite)
 echo "Copying frontend template..."
 cp -r "$TEMPLATE_DIR/frontend-client" "$TARGET_DIR/frontend"
 
-# Copy nginx directory for unified deployment
-echo "Copying nginx configuration..."
-mkdir -p "$TARGET_DIR/nginx"
-cp "$TEMPLATE_DIR/nginx/nginx.conf.template" "$TARGET_DIR/nginx/"
+# Remove node_modules if accidentally copied
+rm -rf "$TARGET_DIR/frontend/node_modules" 2>/dev/null || true
 
 # Copy root Dockerfile for Koyeb deployment
 echo "Copying Dockerfile..."
@@ -44,9 +42,9 @@ cp "$TEMPLATE_DIR/Dockerfile" "$TARGET_DIR/"
 # Copy docker directory for development
 echo "Copying Docker development templates..."
 mkdir -p "$TARGET_DIR/docker"
-cp "$TEMPLATE_DIR/docker/Dockerfile.backend" "$TARGET_DIR/docker/"
-cp "$TEMPLATE_DIR/docker/Dockerfile.frontend" "$TARGET_DIR/docker/"
-cp "$TEMPLATE_DIR/docker/docker-compose.yml" "$TARGET_DIR/"
+cp "$TEMPLATE_DIR/docker/Dockerfile.backend" "$TARGET_DIR/docker/" 2>/dev/null || true
+cp "$TEMPLATE_DIR/docker/Dockerfile.frontend" "$TARGET_DIR/docker/" 2>/dev/null || true
+cp "$TEMPLATE_DIR/docker/docker-compose.yml" "$TARGET_DIR/" 2>/dev/null || true
 
 # Copy unified .env.example
 echo "Copying environment template..."
@@ -75,10 +73,12 @@ fi
 
 # Replace placeholders in frontend
 echo "Customizing frontend..."
-find "$TARGET_DIR/frontend" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.json" \) -exec \
+find "$TARGET_DIR/frontend" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.json" -o -name "*.html" \) -exec \
   sed -i "s/your-project-frontend/$PROJECT_NAME-frontend/g" {} \;
-find "$TARGET_DIR/frontend" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.json" \) -exec \
+find "$TARGET_DIR/frontend" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.json" -o -name "*.html" \) -exec \
   sed -i "s/Your Project/${PROJECT_NAME}/g" {} \;
+find "$TARGET_DIR/frontend" -type f \( -name "*.tsx" -o -name "*.ts" -o -name "*.json" -o -name "*.html" \) -exec \
+  sed -i "s/My App/${PROJECT_NAME}/g" {} \;
 
 # Replace placeholders in Docker files
 echo "Customizing Docker configuration..."
@@ -101,7 +101,7 @@ node_modules/
 target/
 
 # Build output
-.next/
+dist/
 *.jar
 
 # Environment
@@ -130,9 +130,8 @@ echo "============================================"
 echo ""
 echo "Project structure:"
 echo "  $TARGET_DIR/"
-echo "  ├── backend/          # Spring Boot backend"
-echo "  ├── frontend/         # Next.js frontend"
-echo "  ├── nginx/            # Nginx config for unified deployment"
+echo "  ├── backend/          # Spring Boot backend (with SPA serving)"
+echo "  ├── frontend/         # React SPA (Vite + React Router)"
 echo "  ├── docker/           # Docker files for development"
 echo "  ├── Dockerfile        # Unified Dockerfile for Koyeb"
 echo "  ├── docker-compose.yml"
@@ -170,8 +169,6 @@ echo "| AUTH_SERVER_URL      | Central auth server URL             |"
 echo "| CORS_ALLOWED_ORIGINS | Your app URL                        |"
 echo ""
 echo "No JWT_SECRET required! Token validation is done via introspection."
-echo "No NEXT_PUBLIC_API_URL required! Nginx proxies /api to backend."
-echo "No NEXT_PUBLIC_APP_URL required! OAuth callbacks use browser origin."
 echo ""
 echo "============================================"
 echo "UPDATING YOUR PROJECT"

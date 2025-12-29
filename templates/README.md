@@ -11,7 +11,7 @@ Blueprint templates for creating new projects that use the central authenticatio
 │  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────────┐ │
 │  │   OAuth2    │  │    JWT      │  │    Token Introspection   │ │
 │  │  Providers  │  │   Tokens    │  │    /api/auth/introspect  │ │
-│  │ Google/GH/MS│  │             │  │                          │ │
+│  │ Google/GH/MS│  │   Cookies   │  │                          │ │
 │  └─────────────┘  └─────────────┘  └──────────────────────────┘ │
 │                         ▲                                        │
 │                         │ Token Introspection (no shared secret) │
@@ -25,14 +25,15 @@ Blueprint templates for creating new projects that use the central authenticatio
 │    Project    │ │    Project    │ │    (Future)   │
 │               │ │               │ │               │
 │ ┌───────────┐ │ │ ┌───────────┐ │ │ ┌───────────┐ │
-│ │  Frontend │ │ │ │  Frontend │ │ │ │  Frontend │ │
-│ │  Next.js  │ │ │ │  Next.js  │ │ │ │  Next.js  │ │
+│ │  React    │ │ │ │  React    │ │ │ │  React    │ │
+│ │   SPA     │ │ │ │   SPA     │ │ │ │   SPA     │ │
 │ └───────────┘ │ │ └───────────┘ │ │ └───────────┘ │
 │       ▲       │ │       ▲       │ │       ▲       │
 │       │       │ │       │       │ │       │       │
 │ ┌───────────┐ │ │ ┌───────────┐ │ │ ┌───────────┐ │
 │ │  Backend  │ │ │ │  Backend  │ │ │ │  Backend  │ │
 │ │Spring Boot│ │ │ │Spring Boot│ │ │ │Spring Boot│ │
+│ │(serves SPA)│ │ │(serves SPA)│ │ │(serves SPA)│ │
 │ └───────────┘ │ │ └───────────┘ │ │ └───────────┘ │
 └───────────────┘ └───────────────┘ └───────────────┘
 ```
@@ -71,10 +72,11 @@ cd templates/scripts
 ```
 
 This creates a Koyeb-ready project with:
-- Root `Dockerfile` for unified deployment
-- `nginx/` config for reverse proxy
-- `.env.example` with all required variables
+- Root `Dockerfile` for unified deployment (single container)
+- Spring Boot backend that serves React SPA static files
+- React SPA frontend (Vite + React Router)
 - Token introspection with Caffeine caching
+- No nginx required!
 
 ### Update an existing project
 
@@ -91,7 +93,7 @@ Update specific components only:
 # Update everything
 ./update-project.sh ~/Projects/@vvise-co/my-app --all
 
-# Update Docker files only (Dockerfile, nginx, docker-compose)
+# Update Docker files only (Dockerfile, docker-compose)
 ./update-project.sh ~/Projects/@vvise-co/my-app --docker
 
 # Update Maven wrapper only (fixes "mvnw not found" errors)
@@ -103,23 +105,21 @@ Update specific components only:
 
 Available options:
 - `--all` - Update everything (default if no options specified)
-- `--docker` - Update Dockerfile, nginx config, docker-compose
+- `--docker` - Update Dockerfile, docker-compose
 - `--readme` - Update README.md
 - `--env` - Update .env.example files
 - `--mvnw` - Update Maven wrapper (mvnw and .mvn)
-- `--frontend` - Update frontend pages (login, callback) and components
+- `--frontend` - Update frontend pages and components
 - `--backend` - Update backend source files (security, config, controller)
-- `--scripts` - Update shared lib files (auth.ts, api.ts, types.ts)
+- `--scripts` - Update shared lib files (api.ts, types.ts)
 
 ## Directory Structure
 
 ```
 templates/
-├── Dockerfile               # Unified Dockerfile for Koyeb
+├── Dockerfile               # Unified Dockerfile for Koyeb (single container)
 ├── .env.example             # Unified environment template
 ├── README.md                # This documentation
-├── nginx/
-│   └── nginx.conf.template  # Nginx reverse proxy config
 │
 ├── backend-client/          # Spring Boot backend template
 │   ├── src/main/kotlin/
@@ -128,9 +128,17 @@ templates/
 │   ├── .mvn/                # Maven wrapper config
 │   └── .env.example
 │
-├── frontend-client/         # Next.js frontend template
+├── frontend-client/         # React SPA frontend template (Vite)
 │   ├── src/
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   ├── pages/           # LoginPage, DashboardPage, ProfilePage, etc.
+│   │   ├── components/      # ProtectedRoute, UserMenu, OAuthButtons
+│   │   ├── context/         # AuthContext
+│   │   └── lib/             # api.ts, types.ts
 │   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
 │   └── .env.example
 │
 ├── docker/                  # Development Docker files
@@ -188,7 +196,6 @@ AUTH_SERVER_URL=http://host.docker.internal:8081
 # APPLICATION URLs (Required)
 # ===========================================
 CORS_ALLOWED_ORIGINS=http://localhost:8000
-# NEXT_PUBLIC_APP_URL is optional - OAuth callbacks use browser origin automatically
 
 # ===========================================
 # OPTIONAL
@@ -200,8 +207,8 @@ CORS_ALLOWED_ORIGINS=http://localhost:8000
 #### Step 3: Build and run
 
 ```bash
-# Build the unified image
-docker build -t my-app .
+# Build the unified image (pass auth server URL for frontend build)
+docker build --build-arg VITE_AUTH_SERVER_URL=http://host.docker.internal:8081 -t my-app .
 
 # Run on default port (8000)
 docker run -p 8000:8000 --env-file .env my-app
@@ -269,7 +276,7 @@ AUTH_SERVER_URL=http://localhost:8081
 # AUTH_CACHE_TTL=300
 
 # CORS Configuration
-CORS_ALLOWED_ORIGINS=http://localhost:3001
+CORS_ALLOWED_ORIGINS=http://localhost:5173
 ```
 
 #### Step 3: Start the Backend
@@ -284,30 +291,18 @@ cd your-project/backend
 
 ```bash
 cd your-project/frontend
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Edit `frontend/.env.local`:
+Edit `frontend/.env`:
 
 ```bash
 # =================================
 # Frontend Environment (Local Dev)
 # =================================
 
-# Your project's backend API URL
-NEXT_PUBLIC_API_URL=http://localhost:8080
-
-# Central auth server URL (for browser redirects)
-NEXT_PUBLIC_AUTH_SERVER_URL=http://localhost:8081
-
-# Central auth server URL (for server-side API calls)
-AUTH_SERVER_URL=http://localhost:8081
-
-# Your app's public URL (for OAuth callbacks)
-NEXT_PUBLIC_APP_URL=http://localhost:3001
-
-# Node environment
-NODE_ENV=development
+# Central auth server URL
+VITE_AUTH_SERVER_URL=http://localhost:8081
 ```
 
 #### Step 5: Start the Frontend
@@ -316,12 +311,12 @@ NODE_ENV=development
 cd your-project/frontend
 npm install
 npm run dev
-# Frontend runs on http://localhost:3001
+# Frontend runs on http://localhost:5173
 ```
 
 #### Step 6: Access your app
 
-- Frontend: http://localhost:3001
+- Frontend: http://localhost:5173
 - Backend API: http://localhost:8080/api
 - Auth Server: http://localhost:8081
 
@@ -355,7 +350,15 @@ git push -u origin main
 3. Select your repository
 4. Koyeb auto-detects the root `Dockerfile`
 
-### Step 3: Configure Environment Variables
+### Step 3: Configure Build Arguments
+
+Add these build arguments (for frontend build):
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VITE_AUTH_SERVER_URL` | Auth server URL (frontend build-time) | `https://auth-server-xxx.koyeb.app` |
+
+### Step 4: Configure Environment Variables
 
 In the Koyeb service settings, add these environment variables:
 
@@ -371,16 +374,15 @@ In the Koyeb service settings, add these environment variables:
 **Important Notes:**
 - `PORT` is automatically set by Koyeb - do not set it manually
 - No `JWT_SECRET` required - token validation uses introspection
-- No `NEXT_PUBLIC_API_URL` required - Nginx proxies `/api` to backend
-- No `NEXT_PUBLIC_APP_URL` required - OAuth callbacks use browser origin automatically
+- Backend serves static files directly - no nginx needed
 
-### Step 4: Deploy
+### Step 5: Deploy
 
 1. Click **Deploy**
 2. Wait for the build to complete
 3. Your app is live at `https://your-app-xxx.koyeb.app`
 
-### Step 5: Configure Auth Server Callback
+### Step 6: Configure Auth Server Callback
 
 Add your app's callback URL to the auth server's allowed redirects:
 
@@ -410,7 +412,11 @@ OAUTH2_REDIRECT_URI=https://app1.koyeb.app/auth/callback,https://app2.koyeb.app/
 | `CORS_ALLOWED_ORIGINS` | Yes | Your app URL | `https://my-app.koyeb.app` |
 | `AUTH_CACHE_TTL` | No | Token cache TTL in seconds | `300` (default) |
 
-**Note:** `NEXT_PUBLIC_APP_URL` is not required - OAuth callbacks automatically use the browser's origin.
+**Build Arguments:**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `VITE_AUTH_SERVER_URL` | Auth server URL (frontend) | `https://auth.koyeb.app` |
 
 ### Separate Services (Local Development)
 
@@ -425,39 +431,37 @@ OAUTH2_REDIRECT_URI=https://app1.koyeb.app/auth/callback,https://app2.koyeb.app/
 | `DATABASE_PASSWORD` | Yes | Database password | `postgres` |
 | `AUTH_SERVER_URL` | Yes | Auth server URL | `http://localhost:8081` |
 | `AUTH_CACHE_TTL` | No | Token cache TTL in seconds | `300` (default) |
-| `CORS_ALLOWED_ORIGINS` | Yes | Frontend URL(s), comma-separated | `http://localhost:3001` |
+| `CORS_ALLOWED_ORIGINS` | Yes | Frontend URL(s), comma-separated | `http://localhost:5173` |
 
-#### Frontend (`frontend/.env.local`)
+#### Frontend (`frontend/.env`)
 
 | Variable | Required | Description | Example |
 |----------|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Yes | Backend API URL | `http://localhost:8080` |
-| `NEXT_PUBLIC_AUTH_SERVER_URL` | Yes | Auth server URL (browser) | `http://localhost:8081` |
-| `AUTH_SERVER_URL` | Yes | Auth server URL (server-side) | `http://localhost:8081` |
-| `NEXT_PUBLIC_APP_URL` | Yes | Frontend URL | `http://localhost:3001` |
-| `NODE_ENV` | No | Node environment | `development` |
+| `VITE_AUTH_SERVER_URL` | Yes | Auth server URL | `http://localhost:8081` |
 
 ---
 
 ## Authentication Flow
 
-1. **User clicks "Sign in with Google/GitHub/Microsoft"**
+1. **User clicks "Sign in with Auth Server"**
    - Frontend redirects to `AUTH_SERVER/oauth2/authorization/{provider}`
 
 2. **Auth server handles OAuth2 flow**
-   - User authenticates with the provider
+   - User authenticates with Google/GitHub/Microsoft
    - Auth server creates/updates user record
-   - Generates JWT access token and refresh token
+   - Sets HTTP-only cookies (access_token, refresh_token)
 
 3. **Auth server redirects back to your app**
-   - Redirects to `YOUR_APP/auth/callback?token=...&refreshToken=...`
+   - Redirects to `YOUR_APP/auth/callback`
+   - Cookies are already set by the auth server
 
-4. **Your frontend stores tokens**
-   - Tokens are stored in HTTP-only cookies via API route
+4. **Your frontend loads user data**
+   - AuthCallbackPage calls `/api/auth/me` on the auth server
+   - Auth server returns user data (cookies sent automatically)
    - User is redirected to the dashboard
 
 5. **Protected API requests**
-   - Frontend includes access token in requests
+   - Frontend includes cookies in requests to your backend
    - Your backend validates token via introspection (cached)
    - Auth server confirms token validity
 
@@ -471,13 +475,14 @@ OAUTH2_REDIRECT_URI=https://app1.koyeb.app/auth/callback,https://app2.koyeb.app/
 - **@CurrentUser**: Annotation to inject the current user into controllers
 - **CacheConfig**: Caffeine cache for token introspection results
 
-### Frontend
+### Frontend (React SPA)
 
-- **lib/auth.ts**: Server-side authentication helpers
+- **context/AuthContext.tsx**: Client-side authentication state and methods
 - **lib/api.ts**: API client for backend and auth server requests
-- **middleware.ts**: Route protection middleware
-- **OAuthButtons**: OAuth provider login buttons
-- **UserMenu**: User dropdown with logout
+- **components/ProtectedRoute.tsx**: Route protection component
+- **components/OAuthButtons.tsx**: "Sign in with Auth Server" button
+- **components/UserMenu.tsx**: User dropdown with logout
+- **pages/AuthCallbackPage.tsx**: Handles OAuth callback
 
 ## Adding New Features
 
@@ -502,18 +507,18 @@ class ProjectController {
 }
 ```
 
-### Adding role-based UI
+### Adding role-based UI (React)
 
 ```tsx
-import { getCurrentUser, isAdmin } from '@/lib/auth';
+import { useAuth } from '@/context/AuthContext';
 
-export default async function Page() {
-  const user = await getCurrentUser();
+export default function Page() {
+  const { user, isAdmin } = useAuth();
 
   return (
     <div>
       <h1>Welcome {user?.name}</h1>
-      {isAdmin(user) && (
+      {isAdmin && (
         <AdminPanel />
       )}
     </div>
@@ -566,11 +571,11 @@ This is usually caused by **misconfigured OAuth URLs on the auth server**. The a
 
 ### "CORS error"
 - Add your frontend URL to `CORS_ALLOWED_ORIGINS` in your backend
-- For local dev, ensure the URL includes the port (e.g., `http://localhost:3001`)
+- For local dev, ensure the URL includes the port (e.g., `http://localhost:5173`)
 
 ### "Redirect loop on login"
 - Check that the auth server's `OAUTH2_REDIRECT_URI` includes your app's callback URL
-- Verify `AUTH_SERVER_URL` is correct
+- Verify `VITE_AUTH_SERVER_URL` is correct
 
 ### "Token expired"
 - The frontend should automatically refresh tokens

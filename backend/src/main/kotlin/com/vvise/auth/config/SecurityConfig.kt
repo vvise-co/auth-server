@@ -41,10 +41,23 @@ class SecurityConfig(
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .authorizeHttpRequests { auth ->
                 auth
-                    .requestMatchers("/", "/error", "/favicon.ico", "/health", "/debug/**").permitAll()
+                    // Static resources
+                    .requestMatchers("/", "/index.html", "/favicon.ico").permitAll()
+                    .requestMatchers("/assets/**", "/*.js", "/*.css", "/*.svg", "/*.png", "/*.ico").permitAll()
+                    // SPA routes (served as index.html by SpaController)
+                    .requestMatchers("/login", "/auth/callback").permitAll()
+                    .requestMatchers("/dashboard", "/dashboard/**").permitAll()
+                    .requestMatchers("/profile", "/profile/**").permitAll()
+                    .requestMatchers("/users", "/users/**").permitAll()
+                    // Health and debug endpoints
+                    .requestMatchers("/error", "/health", "/debug/**").permitAll()
+                    // Auth API (public)
                     .requestMatchers("/api/auth/**").permitAll()
+                    // OAuth2 endpoints
                     .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                    // Admin API (requires ADMIN role)
                     .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                    // All other API routes require authentication
                     .anyRequest().authenticated()
             }
             .oauth2Login { oauth2 ->
@@ -66,7 +79,9 @@ class SecurityConfig(
     @Bean
     fun webSecurityCustomizer(): WebSecurityCustomizer {
         return WebSecurityCustomizer { web ->
-            web.ignoring().requestMatchers("/health", "/debug/**")
+            web.ignoring()
+                .requestMatchers("/health", "/debug/**")
+                .requestMatchers("/assets/**", "/*.js", "/*.css", "/*.svg", "/*.png", "/*.ico")
         }
     }
 }

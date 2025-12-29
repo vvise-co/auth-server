@@ -10,13 +10,13 @@
 #
 # Options:
 #   --all       Update everything (default if no options specified)
-#   --docker    Update Dockerfile, nginx config, docker-compose
+#   --docker    Update Dockerfile, docker-compose
 #   --readme    Update README.md
 #   --env       Update .env.example
 #   --mvnw      Update Maven wrapper (mvnw and .mvn)
 #   --frontend  Update frontend pages and components
 #   --backend   Update backend source files (security, config)
-#   --scripts   Update shared lib files (auth.ts, api.ts, types.ts)
+#   --scripts   Update shared lib files (api.ts, types.ts)
 
 set -e
 
@@ -47,13 +47,13 @@ if [ -z "$TARGET_DIR" ]; then
   echo ""
   echo "Options:"
   echo "  --all       Update everything (default if no options specified)"
-  echo "  --docker    Update Dockerfile, nginx config, docker-compose"
+  echo "  --docker    Update Dockerfile, docker-compose"
   echo "  --readme    Update README.md"
   echo "  --env       Update .env.example files"
   echo "  --mvnw      Update Maven wrapper (mvnw and .mvn)"
   echo "  --frontend  Update frontend pages and components"
   echo "  --backend   Update backend source files (security, config)"
-  echo "  --scripts   Update shared lib files (auth.ts, api.ts, types.ts)"
+  echo "  --scripts   Update shared lib files (api.ts, types.ts)"
   exit 1
 fi
 
@@ -132,13 +132,6 @@ if [ "$UPDATE_DOCKER" = true ]; then
     UPDATED+=("Dockerfile")
   fi
 
-  # Update nginx config
-  if [ -f "$TEMPLATE_DIR/nginx/nginx.conf.template" ]; then
-    mkdir -p "$TARGET_DIR/nginx"
-    cp "$TEMPLATE_DIR/nginx/nginx.conf.template" "$TARGET_DIR/nginx/"
-    UPDATED+=("nginx/nginx.conf.template")
-  fi
-
   # Update docker directory
   if [ -d "$TEMPLATE_DIR/docker" ]; then
     mkdir -p "$TARGET_DIR/docker"
@@ -146,6 +139,13 @@ if [ "$UPDATE_DOCKER" = true ]; then
     [ -f "$TEMPLATE_DIR/docker/Dockerfile.frontend" ] && cp "$TEMPLATE_DIR/docker/Dockerfile.frontend" "$TARGET_DIR/docker/"
     [ -f "$TEMPLATE_DIR/docker/docker-compose.yml" ] && cp "$TEMPLATE_DIR/docker/docker-compose.yml" "$TARGET_DIR/"
     UPDATED+=("docker/Dockerfile.backend" "docker/Dockerfile.frontend" "docker-compose.yml")
+  fi
+
+  # Remove old nginx directory if exists (no longer needed)
+  if [ -d "$TARGET_DIR/nginx" ]; then
+    echo -e "${YELLOW}Removing old nginx directory (no longer needed)...${NC}"
+    rm -rf "$TARGET_DIR/nginx"
+    UPDATED+=("nginx/ (removed)")
   fi
 fi
 
@@ -199,68 +199,73 @@ if [ "$UPDATE_MVNW" = true ]; then
   fi
 fi
 
-# Update frontend pages and components
+# Update frontend pages and components (React SPA)
 if [ "$UPDATE_FRONTEND" = true ]; then
   echo -e "${GREEN}Updating frontend pages and components...${NC}"
 
   if [ -d "$TARGET_DIR/frontend/src" ]; then
-    # Update app pages
-    TEMPLATE_APP_DIR="$TEMPLATE_DIR/frontend-client/src/app"
-    TARGET_APP_DIR="$TARGET_DIR/frontend/src/app"
+    # Check if this is a Next.js project that needs migration
+    if [ -f "$TARGET_DIR/frontend/next.config.js" ] || [ -d "$TARGET_DIR/frontend/src/app" ]; then
+      echo -e "${YELLOW}Detected Next.js project - migration to React SPA required${NC}"
+      echo -e "${YELLOW}Please backup your frontend and run init-project.sh for a fresh React SPA${NC}"
+    else
+      # Update React SPA components
+      TEMPLATE_SRC="$TEMPLATE_DIR/frontend-client/src"
+      TARGET_SRC="$TARGET_DIR/frontend/src"
 
-    if [ -d "$TEMPLATE_APP_DIR" ] && [ -d "$TARGET_APP_DIR" ]; then
-      # Update auth callback page
-      if [ -f "$TEMPLATE_APP_DIR/auth/callback/page.tsx" ]; then
-        mkdir -p "$TARGET_APP_DIR/auth/callback"
-        cp "$TEMPLATE_APP_DIR/auth/callback/page.tsx" "$TARGET_APP_DIR/auth/callback/"
-        UPDATED+=("frontend/src/app/auth/callback/page.tsx")
-      fi
-
-      # Update login page
-      if [ -f "$TEMPLATE_APP_DIR/login/page.tsx" ]; then
-        mkdir -p "$TARGET_APP_DIR/login"
-        cp "$TEMPLATE_APP_DIR/login/page.tsx" "$TARGET_APP_DIR/login/"
-        UPDATED+=("frontend/src/app/login/page.tsx")
-      fi
-
-      # Update API routes
-      if [ -d "$TEMPLATE_APP_DIR/api/auth" ]; then
-        mkdir -p "$TARGET_APP_DIR/api/auth"
-        for route in callback logout; do
-          if [ -f "$TEMPLATE_APP_DIR/api/auth/$route/route.ts" ]; then
-            mkdir -p "$TARGET_APP_DIR/api/auth/$route"
-            cp "$TEMPLATE_APP_DIR/api/auth/$route/route.ts" "$TARGET_APP_DIR/api/auth/$route/"
-            UPDATED+=("frontend/src/app/api/auth/$route/route.ts")
+      # Update pages
+      if [ -d "$TEMPLATE_SRC/pages" ]; then
+        mkdir -p "$TARGET_SRC/pages"
+        for file in "$TEMPLATE_SRC/pages"/*.tsx; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            cp "$file" "$TARGET_SRC/pages/"
+            UPDATED+=("frontend/src/pages/$filename")
           fi
         done
       fi
-    fi
 
-    # Update components
-    TEMPLATE_COMPONENTS_DIR="$TEMPLATE_DIR/frontend-client/src/components"
-    TARGET_COMPONENTS_DIR="$TARGET_DIR/frontend/src/components"
+      # Update components
+      if [ -d "$TEMPLATE_SRC/components" ]; then
+        mkdir -p "$TARGET_SRC/components"
+        for file in "$TEMPLATE_SRC/components"/*.tsx; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            cp "$file" "$TARGET_SRC/components/"
+            UPDATED+=("frontend/src/components/$filename")
+          fi
+        done
+      fi
 
-    if [ -d "$TEMPLATE_COMPONENTS_DIR" ]; then
-      mkdir -p "$TARGET_COMPONENTS_DIR"
-      for file in "$TEMPLATE_COMPONENTS_DIR"/*.tsx; do
-        if [ -f "$file" ]; then
-          filename=$(basename "$file")
-          cp "$file" "$TARGET_COMPONENTS_DIR/"
-          UPDATED+=("frontend/src/components/$filename")
-        fi
-      done
-    fi
+      # Update context
+      if [ -d "$TEMPLATE_SRC/context" ]; then
+        mkdir -p "$TARGET_SRC/context"
+        for file in "$TEMPLATE_SRC/context"/*.tsx; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            cp "$file" "$TARGET_SRC/context/"
+            UPDATED+=("frontend/src/context/$filename")
+          fi
+        done
+      fi
 
-    # Update middleware
-    if [ -f "$TEMPLATE_DIR/frontend-client/src/middleware.ts" ]; then
-      cp "$TEMPLATE_DIR/frontend-client/src/middleware.ts" "$TARGET_DIR/frontend/src/"
-      UPDATED+=("frontend/src/middleware.ts")
-    fi
+      # Update App.tsx
+      if [ -f "$TEMPLATE_SRC/App.tsx" ]; then
+        cp "$TEMPLATE_SRC/App.tsx" "$TARGET_SRC/"
+        UPDATED+=("frontend/src/App.tsx")
+      fi
 
-    # Update next.config.js (required for standalone output)
-    if [ -f "$TEMPLATE_DIR/frontend-client/next.config.js" ]; then
-      cp "$TEMPLATE_DIR/frontend-client/next.config.js" "$TARGET_DIR/frontend/"
-      UPDATED+=("frontend/next.config.js")
+      # Update vite.config.ts
+      if [ -f "$TEMPLATE_DIR/frontend-client/vite.config.ts" ]; then
+        cp "$TEMPLATE_DIR/frontend-client/vite.config.ts" "$TARGET_DIR/frontend/"
+        UPDATED+=("frontend/vite.config.ts")
+      fi
+
+      # Update tailwind.config.ts
+      if [ -f "$TEMPLATE_DIR/frontend-client/tailwind.config.ts" ]; then
+        cp "$TEMPLATE_DIR/frontend-client/tailwind.config.ts" "$TARGET_DIR/frontend/"
+        UPDATED+=("frontend/tailwind.config.ts")
+      fi
     fi
   fi
 fi
@@ -348,9 +353,9 @@ fi
 if [ "$UPDATE_SCRIPTS" = true ]; then
   echo -e "${GREEN}Updating shared lib files...${NC}"
 
-  # Update frontend lib files (auth.ts, auth-utils.ts, api.ts, types.ts)
+  # Update frontend lib files (api.ts, types.ts)
   if [ -d "$TARGET_DIR/frontend/src/lib" ]; then
-    for file in auth.ts auth-utils.ts api.ts types.ts; do
+    for file in api.ts types.ts; do
       if [ -f "$TEMPLATE_DIR/frontend-client/src/lib/$file" ]; then
         cp "$TEMPLATE_DIR/frontend-client/src/lib/$file" "$TARGET_DIR/frontend/src/lib/"
         UPDATED+=("frontend/src/lib/$file")
