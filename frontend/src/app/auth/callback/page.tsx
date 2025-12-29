@@ -14,15 +14,24 @@ function AuthCallbackContent() {
     const refreshToken = searchParams.get('refreshToken');
     const errorParam = searchParams.get('error');
 
+    console.log('[Auth Callback Page] Params:', {
+      hasToken: !!token,
+      hasRefreshToken: !!refreshToken,
+      error: errorParam
+    });
+
     if (errorParam) {
       setError(errorParam);
       return;
     }
 
     if (!token || !refreshToken) {
+      console.log('[Auth Callback Page] Missing tokens');
       setError('Missing authentication tokens');
       return;
     }
+
+    console.log('[Auth Callback Page] Calling API to set cookies...');
 
     // Use the API route to set cookies, then redirect
     fetch('/api/auth/callback', {
@@ -32,14 +41,18 @@ function AuthCallbackContent() {
       credentials: 'include',
     })
       .then((res) => {
+        console.log('[Auth Callback Page] API response:', res.status, res.ok);
         if (res.ok) {
+          console.log('[Auth Callback Page] Success! Redirecting to dashboard...');
           // Force full page reload to ensure cookies are sent
           window.location.replace('/dashboard');
         } else {
+          console.log('[Auth Callback Page] API returned error');
           setError('Failed to authenticate');
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[Auth Callback Page] Fetch error:', err);
         setError('Failed to authenticate');
       });
   }, [searchParams]);

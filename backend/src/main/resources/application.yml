@@ -67,8 +67,8 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
   oauth2:
-    # Redirect to API route handler which sets cookies and redirects to dashboard
-    authorized-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/api/auth/callback}
+    # Redirect to frontend callback page which uses JS to set cookies via API route
+    authorized-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/auth/callback}
     # Allowed domains for client app redirects (comma-separated, supports wildcards like *.koyeb.app)
     allowed-redirect-domains: ${OAUTH2_ALLOWED_REDIRECT_DOMAINS:}
 
