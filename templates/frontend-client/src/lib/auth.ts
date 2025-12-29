@@ -87,9 +87,16 @@ export function isAdmin(user: User | null): boolean {
 
 /**
  * Get the OAuth2 login URL for a provider.
+ * In unified deployment, appUrl can be omitted if called from client-side (uses window.location.origin).
+ * For server-side rendering, pass the appUrl or set NEXT_PUBLIC_APP_URL.
  */
-export function getLoginUrl(provider: string, callbackUrl?: string): string {
-  const callback = callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`;
+export function getLoginUrl(provider: string, callbackUrl?: string, appUrl?: string): string {
+  // Priority: explicit callbackUrl > explicit appUrl > env var > browser origin
+  let callback = callbackUrl;
+  if (!callback) {
+    const baseUrl = appUrl || process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+    callback = `${baseUrl}/auth/callback`;
+  }
   // The auth server will redirect back with tokens
   return `${AUTH_SERVER_URL}/oauth2/authorization/${provider}?redirect_uri=${encodeURIComponent(callback)}`;
 }
