@@ -14,7 +14,9 @@
 #   --readme    Update README.md
 #   --env       Update .env.example
 #   --mvnw      Update Maven wrapper (mvnw and .mvn)
-#   --scripts   Update shared scripts only (not project-specific code)
+#   --frontend  Update frontend pages and components
+#   --backend   Update backend source files (security, config)
+#   --scripts   Update shared lib files (auth.ts, api.ts, types.ts)
 
 set -e
 
@@ -34,6 +36,8 @@ UPDATE_DOCKER=false
 UPDATE_README=false
 UPDATE_ENV=false
 UPDATE_MVNW=false
+UPDATE_FRONTEND=false
+UPDATE_BACKEND=false
 UPDATE_SCRIPTS=false
 
 if [ -z "$TARGET_DIR" ]; then
@@ -45,9 +49,11 @@ if [ -z "$TARGET_DIR" ]; then
   echo "  --all       Update everything (default if no options specified)"
   echo "  --docker    Update Dockerfile, nginx config, docker-compose"
   echo "  --readme    Update README.md"
-  echo "  --env       Update .env.example"
+  echo "  --env       Update .env.example files"
   echo "  --mvnw      Update Maven wrapper (mvnw and .mvn)"
-  echo "  --scripts   Update shared scripts only"
+  echo "  --frontend  Update frontend pages and components"
+  echo "  --backend   Update backend source files (security, config)"
+  echo "  --scripts   Update shared lib files (auth.ts, api.ts, types.ts)"
   exit 1
 fi
 
@@ -81,6 +87,12 @@ else
       --mvnw)
         UPDATE_MVNW=true
         ;;
+      --frontend)
+        UPDATE_FRONTEND=true
+        ;;
+      --backend)
+        UPDATE_BACKEND=true
+        ;;
       --scripts)
         UPDATE_SCRIPTS=true
         ;;
@@ -97,6 +109,8 @@ if [ "$UPDATE_ALL" = true ]; then
   UPDATE_README=true
   UPDATE_ENV=true
   UPDATE_MVNW=true
+  UPDATE_FRONTEND=true
+  UPDATE_BACKEND=true
   UPDATE_SCRIPTS=true
 fi
 
@@ -185,9 +199,148 @@ if [ "$UPDATE_MVNW" = true ]; then
   fi
 fi
 
-# Update shared scripts (lib files, utility functions)
+# Update frontend pages and components
+if [ "$UPDATE_FRONTEND" = true ]; then
+  echo -e "${GREEN}Updating frontend pages and components...${NC}"
+
+  if [ -d "$TARGET_DIR/frontend/src" ]; then
+    # Update app pages
+    TEMPLATE_APP_DIR="$TEMPLATE_DIR/frontend-client/src/app"
+    TARGET_APP_DIR="$TARGET_DIR/frontend/src/app"
+
+    if [ -d "$TEMPLATE_APP_DIR" ] && [ -d "$TARGET_APP_DIR" ]; then
+      # Update auth callback page
+      if [ -f "$TEMPLATE_APP_DIR/auth/callback/page.tsx" ]; then
+        mkdir -p "$TARGET_APP_DIR/auth/callback"
+        cp "$TEMPLATE_APP_DIR/auth/callback/page.tsx" "$TARGET_APP_DIR/auth/callback/"
+        UPDATED+=("frontend/src/app/auth/callback/page.tsx")
+      fi
+
+      # Update login page
+      if [ -f "$TEMPLATE_APP_DIR/login/page.tsx" ]; then
+        mkdir -p "$TARGET_APP_DIR/login"
+        cp "$TEMPLATE_APP_DIR/login/page.tsx" "$TARGET_APP_DIR/login/"
+        UPDATED+=("frontend/src/app/login/page.tsx")
+      fi
+
+      # Update API routes
+      if [ -d "$TEMPLATE_APP_DIR/api/auth" ]; then
+        mkdir -p "$TARGET_APP_DIR/api/auth"
+        for route in callback logout; do
+          if [ -f "$TEMPLATE_APP_DIR/api/auth/$route/route.ts" ]; then
+            mkdir -p "$TARGET_APP_DIR/api/auth/$route"
+            cp "$TEMPLATE_APP_DIR/api/auth/$route/route.ts" "$TARGET_APP_DIR/api/auth/$route/"
+            UPDATED+=("frontend/src/app/api/auth/$route/route.ts")
+          fi
+        done
+      fi
+    fi
+
+    # Update components
+    TEMPLATE_COMPONENTS_DIR="$TEMPLATE_DIR/frontend-client/src/components"
+    TARGET_COMPONENTS_DIR="$TARGET_DIR/frontend/src/components"
+
+    if [ -d "$TEMPLATE_COMPONENTS_DIR" ]; then
+      mkdir -p "$TARGET_COMPONENTS_DIR"
+      for file in "$TEMPLATE_COMPONENTS_DIR"/*.tsx; do
+        if [ -f "$file" ]; then
+          filename=$(basename "$file")
+          cp "$file" "$TARGET_COMPONENTS_DIR/"
+          UPDATED+=("frontend/src/components/$filename")
+        fi
+      done
+    fi
+
+    # Update middleware
+    if [ -f "$TEMPLATE_DIR/frontend-client/src/middleware.ts" ]; then
+      cp "$TEMPLATE_DIR/frontend-client/src/middleware.ts" "$TARGET_DIR/frontend/src/"
+      UPDATED+=("frontend/src/middleware.ts")
+    fi
+  fi
+fi
+
+# Update backend source files
+if [ "$UPDATE_BACKEND" = true ]; then
+  echo -e "${GREEN}Updating backend source files...${NC}"
+
+  if [ -d "$TARGET_DIR/backend/src/main/kotlin" ]; then
+    # Find the project's package directory
+    PROJECT_PKG_DIR=$(find "$TARGET_DIR/backend/src/main/kotlin" -type d -name "com" -exec find {} -mindepth 2 -maxdepth 2 -type d \; 2>/dev/null | head -1)
+
+    if [ -n "$PROJECT_PKG_DIR" ]; then
+      # Get the target package name from directory structure
+      TARGET_PKG=$(echo "$PROJECT_PKG_DIR" | sed 's|.*/kotlin/||' | tr '/' '.')
+
+      TEMPLATE_PKG_DIR="$TEMPLATE_DIR/backend-client/src/main/kotlin/com/vvise/template"
+
+      # Update security files
+      if [ -d "$TEMPLATE_PKG_DIR/security" ]; then
+        mkdir -p "$PROJECT_PKG_DIR/security"
+        for file in "$TEMPLATE_PKG_DIR/security"/*.kt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            sed "s/com.vvise.template/$TARGET_PKG/g" "$file" > "$PROJECT_PKG_DIR/security/$filename"
+            UPDATED+=("backend/.../security/$filename")
+          fi
+        done
+      fi
+
+      # Update config files
+      if [ -d "$TEMPLATE_PKG_DIR/config" ]; then
+        mkdir -p "$PROJECT_PKG_DIR/config"
+        for file in "$TEMPLATE_PKG_DIR/config"/*.kt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            sed "s/com.vvise.template/$TARGET_PKG/g" "$file" > "$PROJECT_PKG_DIR/config/$filename"
+            UPDATED+=("backend/.../config/$filename")
+          fi
+        done
+      fi
+
+      # Update controller files
+      if [ -d "$TEMPLATE_PKG_DIR/controller" ]; then
+        mkdir -p "$PROJECT_PKG_DIR/controller"
+        for file in "$TEMPLATE_PKG_DIR/controller"/*.kt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            sed "s/com.vvise.template/$TARGET_PKG/g" "$file" > "$PROJECT_PKG_DIR/controller/$filename"
+            UPDATED+=("backend/.../controller/$filename")
+          fi
+        done
+      fi
+
+      # Update service files
+      if [ -d "$TEMPLATE_PKG_DIR/service" ]; then
+        mkdir -p "$PROJECT_PKG_DIR/service"
+        for file in "$TEMPLATE_PKG_DIR/service"/*.kt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            sed "s/com.vvise.template/$TARGET_PKG/g" "$file" > "$PROJECT_PKG_DIR/service/$filename"
+            UPDATED+=("backend/.../service/$filename")
+          fi
+        done
+      fi
+
+      # Update dto files
+      if [ -d "$TEMPLATE_PKG_DIR/dto" ]; then
+        mkdir -p "$PROJECT_PKG_DIR/dto"
+        for file in "$TEMPLATE_PKG_DIR/dto"/*.kt; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            sed "s/com.vvise.template/$TARGET_PKG/g" "$file" > "$PROJECT_PKG_DIR/dto/$filename"
+            UPDATED+=("backend/.../dto/$filename")
+          fi
+        done
+      fi
+    else
+      echo -e "${YELLOW}Warning: Could not find backend package directory${NC}"
+    fi
+  fi
+fi
+
+# Update shared lib files
 if [ "$UPDATE_SCRIPTS" = true ]; then
-  echo -e "${GREEN}Updating shared scripts...${NC}"
+  echo -e "${GREEN}Updating shared lib files...${NC}"
 
   # Update frontend lib files (auth.ts, api.ts, types.ts)
   if [ -d "$TARGET_DIR/frontend/src/lib" ]; then
@@ -197,29 +350,6 @@ if [ "$UPDATE_SCRIPTS" = true ]; then
         UPDATED+=("frontend/src/lib/$file")
       fi
     done
-  fi
-
-  # Update backend security files
-  if [ -d "$TARGET_DIR/backend/src/main/kotlin" ]; then
-    # Find the package directory
-    BACKEND_PKG_DIR=$(find "$TARGET_DIR/backend/src/main/kotlin" -type d -name "security" 2>/dev/null | head -1)
-    if [ -n "$BACKEND_PKG_DIR" ]; then
-      TEMPLATE_SECURITY_DIR="$TEMPLATE_DIR/backend-client/src/main/kotlin/com/vvise/template/security"
-      if [ -d "$TEMPLATE_SECURITY_DIR" ]; then
-        # Get the target package name from directory structure
-        TARGET_PKG=$(echo "$BACKEND_PKG_DIR" | sed 's|.*/kotlin/||' | tr '/' '.')
-        TARGET_PKG=${TARGET_PKG%%.security}
-
-        for file in "$TEMPLATE_SECURITY_DIR"/*.kt; do
-          if [ -f "$file" ]; then
-            filename=$(basename "$file")
-            # Copy and update package name
-            sed "s/com.vvise.template/$TARGET_PKG/g" "$file" > "$BACKEND_PKG_DIR/$filename"
-            UPDATED+=("backend/.../$filename")
-          fi
-        done
-      fi
-    fi
   fi
 fi
 

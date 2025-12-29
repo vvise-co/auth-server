@@ -107,7 +107,9 @@ Available options:
 - `--readme` - Update README.md
 - `--env` - Update .env.example files
 - `--mvnw` - Update Maven wrapper (mvnw and .mvn)
-- `--scripts` - Update shared lib files (auth.ts, api.ts, security classes)
+- `--frontend` - Update frontend pages (login, callback) and components
+- `--backend` - Update backend source files (security, config, controller)
+- `--scripts` - Update shared lib files (auth.ts, api.ts, types.ts)
 
 ## Directory Structure
 

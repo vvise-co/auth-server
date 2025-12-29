@@ -32,7 +32,7 @@ class AuthServerClient(
             val entity = HttpEntity<Any>(headers)
 
             val response = restTemplate.exchange<UserDto>(
-                "${authProperties.baseUrl}/api/users/$userId",
+                "${authProperties.authServerUrl}/api/users/$userId",
                 HttpMethod.GET,
                 entity
             )
@@ -55,7 +55,7 @@ class AuthServerClient(
             val entity = HttpEntity<Any>(headers)
 
             val response = restTemplate.exchange<UserDto>(
-                "${authProperties.baseUrl}/api/auth/me",
+                "${authProperties.authServerUrl}/api/auth/me",
                 HttpMethod.GET,
                 entity
             )
@@ -70,12 +70,12 @@ class AuthServerClient(
     /**
      * Get the auth server base URL for redirecting to login.
      */
-    fun getAuthServerUrl(): String = authProperties.baseUrl
+    fun getAuthServerUrl(): String = authProperties.authServerUrl
 
     /**
      * Get the OAuth2 authorization URL for a specific provider.
      */
     fun getOAuth2AuthorizationUrl(provider: String): String {
-        return "${authProperties.baseUrl}/oauth2/authorization/$provider"
+        return "${authProperties.authServerUrl}/oauth2/authorization/$provider"
     }
 }
