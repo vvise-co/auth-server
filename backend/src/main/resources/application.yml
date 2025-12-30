@@ -77,6 +77,9 @@ app:
   cors:
     # For unified deployment, this can be same as app URL
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:8080}
+    # Allowed origin patterns for CORS (supports wildcards like https://*.koyeb.app)
+    # This allows client apps from these domains to call auth server APIs
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:https://*.koyeb.app,https://*.railway.app}
 
   oauth2:
     # Redirect to frontend callback page after OAuth (cookies set by backend)

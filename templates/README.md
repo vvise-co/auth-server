@@ -574,6 +574,9 @@ This is usually caused by **misconfigured OAuth URLs on the auth server**. The a
 ### "CORS error"
 - Add your frontend URL to `CORS_ALLOWED_ORIGINS` in your backend
 - For local dev, ensure the URL includes the port (e.g., `http://localhost:5173`)
+- **For cross-domain auth (client apps calling auth server):**
+  - On the **auth server**, set `CORS_ALLOWED_ORIGIN_PATTERNS=https://*.koyeb.app`
+  - This allows all client apps on `*.koyeb.app` to call the auth server's API
 
 ### "Redirect loop on login"
 - Check that the auth server's `OAUTH2_REDIRECT_URI` includes your app's callback URL

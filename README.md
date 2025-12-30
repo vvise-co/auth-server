@@ -207,7 +207,9 @@ First, create these secrets in your Koyeb dashboard (Settings > Secrets):
    | `MICROSOFT_CLIENT_ID` | Secret | `microsoft-client-id` |
    | `MICROSOFT_CLIENT_SECRET` | Secret | `microsoft-client-secret` |
    | `CORS_ALLOWED_ORIGINS` | Plain | `https://YOUR-FRONTEND.koyeb.app` |
+   | `CORS_ALLOWED_ORIGIN_PATTERNS` | Plain | `https://*.koyeb.app` (for client apps) |
    | `OAUTH2_REDIRECT_URI` | Plain | `https://YOUR-FRONTEND.koyeb.app/auth/callback` |
+   | `OAUTH2_ALLOWED_REDIRECT_DOMAINS` | Plain | `*.koyeb.app,localhost` (for client apps) |
 
 6. Deploy and note your backend URL (e.g., `https://auth-backend-xxxxx.koyeb.app`)
 
