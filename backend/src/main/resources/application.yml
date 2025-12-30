@@ -83,7 +83,8 @@ app:
     # For unified deployment: http://localhost:8080/auth/callback or https://your-app.koyeb.app/auth/callback
     authorized-redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/auth/callback}
     # Allowed domains for client app redirects (comma-separated, supports wildcards like *.koyeb.app)
-    allowed-redirect-domains: ${OAUTH2_ALLOWED_REDIRECT_DOMAINS:}
+    # Default includes common cloud platforms - add your custom domains as needed
+    allowed-redirect-domains: ${OAUTH2_ALLOWED_REDIRECT_DOMAINS:*.koyeb.app,*.railway.app,localhost}
 
 # Logging configuration
 logging:

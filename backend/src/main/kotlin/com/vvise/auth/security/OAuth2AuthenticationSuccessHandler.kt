@@ -11,6 +11,8 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler
 import org.springframework.stereotype.Component
 import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 
 @Component
 class OAuth2AuthenticationSuccessHandler(
@@ -192,14 +194,22 @@ class OAuth2AuthenticationSuccessHandler(
         )
 
         val cookie = request.cookies?.find { it.name == REDIRECT_URI_COOKIE }
-        val redirectUri = cookie?.value
+        val encodedUri = cookie?.value
 
-        if (redirectUri.isNullOrBlank()) {
+        if (encodedUri.isNullOrBlank()) {
             log.debug("No redirect_uri cookie found, will use default")
             return null
         }
 
-        log.debug("Found redirect_uri cookie: {}", redirectUri)
+        // URL-decode the cookie value (it was encoded when stored)
+        val redirectUri = try {
+            URLDecoder.decode(encodedUri, StandardCharsets.UTF_8)
+        } catch (e: Exception) {
+            log.warn("Failed to decode redirect_uri cookie: $encodedUri", e)
+            encodedUri // Fall back to raw value
+        }
+
+        log.debug("Found redirect_uri cookie: {} (decoded: {})", encodedUri, redirectUri)
 
         // Validate the redirect URI
         return if (isValidRedirectUri(redirectUri)) {
@@ -216,8 +226,11 @@ class OAuth2AuthenticationSuccessHandler(
             val parsedUri = URI.create(uri)
             val host = parsedUri.host ?: return false
 
+            log.info("Validating redirect URI: uri=$uri, host=$host")
+
             // Allow localhost for development
             if (host == "localhost" || host == "127.0.0.1") {
+                log.info("Redirect URI allowed: localhost")
                 return true
             }
 
@@ -227,21 +240,35 @@ class OAuth2AuthenticationSuccessHandler(
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
 
+            log.info("Allowed redirect domains: $allowedDomains")
+
             if (allowedDomains.isEmpty()) {
                 // If no domains configured, only allow same origin as default
                 val defaultHost = URI.create(defaultRedirectUri).host
-                return host == defaultHost
+                val allowed = host == defaultHost
+                log.info("No allowed domains configured, checking against default host: $defaultHost, allowed=$allowed")
+                return allowed
             }
 
             // Check if host matches any allowed domain (supports wildcards like *.koyeb.app)
-            allowedDomains.any { domain ->
-                if (domain.startsWith("*.")) {
+            val isAllowed = allowedDomains.any { domain ->
+                val matches = if (domain.startsWith("*.")) {
                     val suffix = domain.substring(1)
                     host.endsWith(suffix) || host == domain.substring(2)
                 } else {
                     host == domain
                 }
+                if (matches) {
+                    log.info("Redirect URI matches allowed domain: $domain")
+                }
+                matches
             }
+
+            if (!isAllowed) {
+                log.warn("Redirect URI not allowed: host=$host not in allowedDomains=$allowedDomains")
+            }
+
+            isAllowed
         } catch (e: Exception) {
             log.error("Failed to parse redirect URI: $uri", e)
             false

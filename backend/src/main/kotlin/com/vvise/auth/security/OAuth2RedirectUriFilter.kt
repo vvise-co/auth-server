@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 /**
  * Filter that captures the redirect_uri query parameter from OAuth2 authorization requests
@@ -49,14 +51,17 @@ class OAuth2RedirectUriFilter : OncePerRequestFilter() {
                 // Store redirect_uri in a cookie
                 // IMPORTANT: Use SameSite=None for cross-site OAuth flow (Google/GitHub redirect back)
                 // This requires Secure=true
+                // URL-encode the value to handle special characters
+                val encodedUri = URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
+
                 if (isSecure) {
                     response.addHeader(
                         "Set-Cookie",
-                        "$REDIRECT_URI_COOKIE=$redirectUri; Path=/; Max-Age=$COOKIE_MAX_AGE; HttpOnly; SameSite=None; Secure"
+                        "$REDIRECT_URI_COOKIE=$encodedUri; Path=/; Max-Age=$COOKIE_MAX_AGE; HttpOnly; SameSite=None; Secure"
                     )
                 } else {
                     // For local development (HTTP), use SameSite=Lax
-                    val cookie = Cookie(REDIRECT_URI_COOKIE, redirectUri)
+                    val cookie = Cookie(REDIRECT_URI_COOKIE, encodedUri)
                     cookie.path = "/"
                     cookie.maxAge = COOKIE_MAX_AGE
                     cookie.isHttpOnly = true
