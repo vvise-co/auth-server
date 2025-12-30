@@ -21,8 +21,9 @@ RUN npm ci || npm install
 COPY frontend/ .
 
 # Build args for environment variables at build time
-ARG VITE_AUTH_SERVER_URL=""
-ENV VITE_AUTH_SERVER_URL=$VITE_AUTH_SERVER_URL
+# Use AUTH_SERVER_URL for both frontend and backend (same value)
+ARG AUTH_SERVER_URL=""
+ENV VITE_AUTH_SERVER_URL=$AUTH_SERVER_URL
 
 # Build the React app
 RUN npm run build

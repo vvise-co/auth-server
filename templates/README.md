@@ -408,15 +408,15 @@ OAUTH2_REDIRECT_URI=https://app1.koyeb.app/auth/callback,https://app2.koyeb.app/
 | `DATABASE_URL` | Yes | PostgreSQL JDBC URL | `jdbc:postgresql://host/db` |
 | `DATABASE_USERNAME` | Yes | Database user | `postgres` |
 | `DATABASE_PASSWORD` | Yes | Database password | `secret` |
-| `AUTH_SERVER_URL` | Yes | Central auth server URL | `https://auth.koyeb.app` |
+| `AUTH_SERVER_URL` | Yes | Central auth server URL (env + build arg) | `https://auth.koyeb.app` |
 | `CORS_ALLOWED_ORIGINS` | Yes | Your app URL | `https://my-app.koyeb.app` |
 | `AUTH_CACHE_TTL` | No | Token cache TTL in seconds | `300` (default) |
 
-**Build Arguments:**
+**Important:** On Koyeb, set `AUTH_SERVER_URL` as **both**:
+1. **Environment variable** (for backend at runtime)
+2. **Build argument** (for frontend at build time)
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_AUTH_SERVER_URL` | Auth server URL (frontend) | `https://auth.koyeb.app` |
+The Dockerfile automatically uses `AUTH_SERVER_URL` for both frontend and backend.
 
 ### Separate Services (Local Development)
 
