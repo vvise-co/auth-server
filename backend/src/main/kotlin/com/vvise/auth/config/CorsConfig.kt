@@ -13,7 +13,7 @@ class CorsConfig {
 
     private val log = LoggerFactory.getLogger(CorsConfig::class.java)
 
-    @Value("\${app.cors.allowed-origins}")
+    @Value("\${app.cors.allowed-origins:}")
     private lateinit var allowedOrigins: String
 
     @Value("\${app.cors.allowed-origin-patterns:}")
