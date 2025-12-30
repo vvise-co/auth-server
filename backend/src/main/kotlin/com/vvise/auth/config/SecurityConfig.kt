@@ -17,6 +17,7 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.context.SecurityContextHolderFilter
 import org.springframework.web.cors.CorsConfigurationSource
 
 @Configuration
@@ -71,7 +72,8 @@ class SecurityConfig(
                     .failureHandler(oAuth2AuthenticationFailureHandler)
             }
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
-            .addFilterBefore(oAuth2RedirectUriFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // Add redirect URI filter at the very beginning to capture the redirect_uri param before OAuth flow starts
+            .addFilterBefore(oAuth2RedirectUriFilter, SecurityContextHolderFilter::class.java)
 
         return http.build()
     }

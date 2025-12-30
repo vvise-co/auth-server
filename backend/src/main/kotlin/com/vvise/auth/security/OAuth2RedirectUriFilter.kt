@@ -36,7 +36,7 @@ class OAuth2RedirectUriFilter : OncePerRequestFilter() {
         // Only process OAuth2 authorization requests
         if (request.requestURI.startsWith("/oauth2/authorization/")) {
             val redirectUri = request.getParameter(REDIRECT_URI_PARAM)
-            log.debug("OAuth2 authorization request: URI={}, redirect_uri={}", request.requestURI, redirectUri)
+            log.info("OAuth2 authorization request: URI={}, redirect_uri={}", request.requestURI, redirectUri)
 
             if (!redirectUri.isNullOrBlank()) {
                 // Check if request is behind HTTPS proxy
@@ -45,7 +45,7 @@ class OAuth2RedirectUriFilter : OncePerRequestFilter() {
                 val isSecure = request.isSecure || forwardedProto == "https" ||
                     host.contains("koyeb") || host.contains("railway")
 
-                log.debug("Setting redirect_uri cookie: value={}, secure={}, forwardedProto={}, host={}",
+                log.info("Setting redirect_uri cookie: value={}, secure={}, forwardedProto={}, host={}",
                     redirectUri, isSecure, forwardedProto, host)
 
                 // Store redirect_uri in a cookie
