@@ -39,18 +39,29 @@ class OAuth2RedirectUriFilter : OncePerRequestFilter() {
             if (!redirectUri.isNullOrBlank()) {
                 // Check if request is behind HTTPS proxy
                 val forwardedProto = request.getHeader("X-Forwarded-Proto")
-                val isSecure = request.isSecure || forwardedProto == "https"
+                val host = request.getHeader("X-Forwarded-Host") ?: request.getHeader("Host") ?: ""
+                val isSecure = request.isSecure || forwardedProto == "https" ||
+                    host.contains("koyeb") || host.contains("railway")
 
-                log.debug("Setting redirect_uri cookie: value={}, secure={}, forwardedProto={}",
-                    redirectUri, isSecure, forwardedProto)
+                log.debug("Setting redirect_uri cookie: value={}, secure={}, forwardedProto={}, host={}",
+                    redirectUri, isSecure, forwardedProto, host)
 
                 // Store redirect_uri in a cookie
-                val cookie = Cookie(REDIRECT_URI_COOKIE, redirectUri)
-                cookie.path = "/"
-                cookie.maxAge = COOKIE_MAX_AGE
-                cookie.isHttpOnly = true
-                cookie.secure = isSecure
-                response.addCookie(cookie)
+                // IMPORTANT: Use SameSite=None for cross-site OAuth flow (Google/GitHub redirect back)
+                // This requires Secure=true
+                if (isSecure) {
+                    response.addHeader(
+                        "Set-Cookie",
+                        "$REDIRECT_URI_COOKIE=$redirectUri; Path=/; Max-Age=$COOKIE_MAX_AGE; HttpOnly; SameSite=None; Secure"
+                    )
+                } else {
+                    // For local development (HTTP), use SameSite=Lax
+                    val cookie = Cookie(REDIRECT_URI_COOKIE, redirectUri)
+                    cookie.path = "/"
+                    cookie.maxAge = COOKIE_MAX_AGE
+                    cookie.isHttpOnly = true
+                    response.addCookie(cookie)
+                }
             }
         }
 
