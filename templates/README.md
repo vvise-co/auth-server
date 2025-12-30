@@ -443,27 +443,29 @@ OAUTH2_REDIRECT_URI=https://app1.koyeb.app/auth/callback,https://app2.koyeb.app/
 
 ## Authentication Flow
 
-1. **User clicks "Sign in with Auth Server"**
-   - Frontend redirects to `AUTH_SERVER/oauth2/authorization/{provider}`
+1. **User clicks OAuth provider button (Google/GitHub/Microsoft)**
+   - Frontend redirects to `AUTH_SERVER/oauth2/authorization/{provider}?redirect_uri=YOUR_APP/auth/callback`
 
 2. **Auth server handles OAuth2 flow**
-   - User authenticates with Google/GitHub/Microsoft
+   - User authenticates with the OAuth provider
    - Auth server creates/updates user record
-   - Sets HTTP-only cookies (access_token, refresh_token)
+   - Generates JWT access token and refresh token
 
 3. **Auth server redirects back to your app**
-   - Redirects to `YOUR_APP/auth/callback`
-   - Cookies are already set by the auth server
+   - Redirects to `YOUR_APP/auth/callback?token=...&refreshToken=...`
+   - Tokens are passed in URL (required for cross-domain auth)
 
-4. **Your frontend loads user data**
-   - AuthCallbackPage calls `/api/auth/me` on the auth server
-   - Auth server returns user data (cookies sent automatically)
+4. **Your frontend stores tokens and loads user data**
+   - AuthCallbackPage extracts tokens from URL parameters
+   - Stores tokens in localStorage
+   - Calls `/api/auth/me` on auth server with Authorization header
    - User is redirected to the dashboard
 
 5. **Protected API requests**
-   - Frontend includes cookies in requests to your backend
+   - Frontend includes `Authorization: Bearer <token>` header in requests
    - Your backend validates token via introspection (cached)
    - Auth server confirms token validity
+   - On 401, frontend attempts token refresh automatically
 
 ## Key Components
 
