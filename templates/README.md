@@ -497,14 +497,14 @@ class ProjectController {
 
     @GetMapping
     fun getProjects(@CurrentUser user: AuthenticatedUser): List<Project> {
-        // user.id, user.email, user.roles, user.imageUrl are available
-        return projectService.getProjectsForUser(user.id)
+        // user.sub, user.email, user.name, user.roles, user.picture are available (OIDC-compliant)
+        return projectService.getProjectsForUser(user.sub)
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     fun createProject(@CurrentUser user: AuthenticatedUser, @RequestBody project: CreateProjectDto): Project {
-        return projectService.create(project, user.id)
+        return projectService.create(project, user.sub)
     }
 }
 ```

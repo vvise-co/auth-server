@@ -7,13 +7,25 @@ import org.springframework.security.core.userdetails.UserDetails
 /**
  * Represents an authenticated user from the central auth server.
  * This is populated from the token introspection response.
+ * Uses OIDC-compliant field names.
  */
 data class AuthenticatedUser(
-    val id: Long,
+    // OIDC: sub - Subject Identifier
+    val sub: String,
+    // OIDC: email
     val email: String,
+    // OIDC: name - Full name
     val name: String,
+    // Application-specific roles
     val roles: List<String>,
-    val imageUrl: String? = null
+    // OIDC: picture - URL of the user's profile picture
+    val picture: String? = null,
+    // OIDC: email_verified
+    val emailVerified: Boolean? = null,
+    // OIDC: given_name
+    val givenName: String? = null,
+    // OIDC: family_name
+    val familyName: String? = null
 ) : UserDetails {
 
     override fun getAuthorities(): Collection<GrantedAuthority> {

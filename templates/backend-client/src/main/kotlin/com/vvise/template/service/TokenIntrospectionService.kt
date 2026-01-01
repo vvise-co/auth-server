@@ -67,15 +67,18 @@ class TokenIntrospectionService(
             return null
         }
 
-        val userId = response.sub?.toLongOrNull() ?: return null
+        val sub = response.sub ?: return null
         val email = response.email ?: return null
 
         return AuthenticatedUser(
-            id = userId,
+            sub = sub,
             email = email,
             name = response.name ?: email,
             roles = response.getRolesList(),
-            imageUrl = response.imageUrl
+            picture = response.picture,
+            emailVerified = response.emailVerified,
+            givenName = response.givenName,
+            familyName = response.familyName
         )
     }
 }

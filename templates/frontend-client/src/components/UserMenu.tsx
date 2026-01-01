@@ -31,8 +31,8 @@ export default function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        {user.imageUrl ? (
-          <img src={user.imageUrl} alt={user.name} className="w-8 h-8 rounded-full" />
+        {user.picture ? (
+          <img src={user.picture} alt={user.name} className="w-8 h-8 rounded-full" />
         ) : (
           <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium">
             {user.name?.charAt(0).toUpperCase() || 'U'}
