@@ -70,7 +70,7 @@ class User(
     var email: String = "",
 
     // OIDC: email_verified - True if the email has been verified
-    @Column(name = "email_verified")
+    @Column(name = "email_verified", nullable = false)
     var emailVerified: Boolean = false,
 
     // OIDC: gender - Gender
@@ -90,7 +90,7 @@ class User(
     var phoneNumber: String? = null,
 
     // OIDC: phone_number_verified - True if the phone number has been verified
-    @Column(name = "phone_number_verified")
+    @Column(name = "phone_number_verified", nullable = false)
     var phoneNumberVerified: Boolean = false,
 
     // OIDC: address - Preferred postal address (stored as JSON)
