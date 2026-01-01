@@ -45,12 +45,35 @@ class CustomOAuth2UserService(
 
         val provider = OAuth2UserInfoFactory.getAuthProvider(registrationId)
 
+        // Parse birthdate if available
+        val birthdate = oAuth2UserInfo.birthdate?.let {
+            try {
+                java.time.LocalDate.parse(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
         val user = userService.createOrUpdateOAuth2User(
             email = email,
             name = oAuth2UserInfo.name,
-            imageUrl = oAuth2UserInfo.imageUrl,
             provider = provider,
-            providerId = oAuth2UserInfo.id
+            providerId = oAuth2UserInfo.id,
+            givenName = oAuth2UserInfo.givenName,
+            familyName = oAuth2UserInfo.familyName,
+            middleName = oAuth2UserInfo.middleName,
+            nickname = oAuth2UserInfo.nickname,
+            preferredUsername = oAuth2UserInfo.preferredUsername,
+            profile = oAuth2UserInfo.profile,
+            picture = oAuth2UserInfo.picture,
+            website = oAuth2UserInfo.website,
+            emailVerified = oAuth2UserInfo.emailVerified,
+            gender = oAuth2UserInfo.gender,
+            birthdate = birthdate,
+            zoneinfo = oAuth2UserInfo.zoneinfo,
+            locale = oAuth2UserInfo.locale,
+            phoneNumber = oAuth2UserInfo.phoneNumber,
+            phoneNumberVerified = oAuth2UserInfo.phoneNumberVerified
         )
 
         return UserPrincipal.create(user, oAuth2User.attributes)

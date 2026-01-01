@@ -45,12 +45,42 @@ class CustomOidcUserService(
 
         val provider = OAuth2UserInfoFactory.getAuthProvider(registrationId)
 
+        // Parse birthdate from OIDC user or attributes
+        val birthdate = oidcUser.birthdate?.let {
+            try {
+                java.time.LocalDate.parse(it)
+            } catch (e: Exception) {
+                null
+            }
+        } ?: oAuth2UserInfo.birthdate?.let {
+            try {
+                java.time.LocalDate.parse(it)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        // Prefer OIDC standard claims from oidcUser, fall back to attributes
         val user = userService.createOrUpdateOAuth2User(
             email = email,
             name = oAuth2UserInfo.name,
-            imageUrl = oAuth2UserInfo.imageUrl,
             provider = provider,
-            providerId = oAuth2UserInfo.id
+            providerId = oAuth2UserInfo.id,
+            givenName = oidcUser.givenName ?: oAuth2UserInfo.givenName,
+            familyName = oidcUser.familyName ?: oAuth2UserInfo.familyName,
+            middleName = oidcUser.middleName ?: oAuth2UserInfo.middleName,
+            nickname = oidcUser.nickName ?: oAuth2UserInfo.nickname,
+            preferredUsername = oidcUser.preferredUsername ?: oAuth2UserInfo.preferredUsername,
+            profile = oidcUser.profile ?: oAuth2UserInfo.profile,
+            picture = oidcUser.picture ?: oAuth2UserInfo.picture,
+            website = oidcUser.website ?: oAuth2UserInfo.website,
+            emailVerified = oidcUser.emailVerified ?: oAuth2UserInfo.emailVerified,
+            gender = oidcUser.gender ?: oAuth2UserInfo.gender,
+            birthdate = birthdate,
+            zoneinfo = oidcUser.zoneInfo ?: oAuth2UserInfo.zoneinfo,
+            locale = oidcUser.locale ?: oAuth2UserInfo.locale,
+            phoneNumber = oidcUser.phoneNumber ?: oAuth2UserInfo.phoneNumber,
+            phoneNumberVerified = oidcUser.phoneNumberVerified ?: oAuth2UserInfo.phoneNumberVerified
         )
 
         return UserPrincipal.createOidc(user, oidcUser.attributes, oidcUser.idToken, oidcUser.userInfo)

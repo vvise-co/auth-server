@@ -43,10 +43,9 @@ data class TokenIntrospectionResponse(
     val iat: Long? = null,
 
     /**
-     * Image URL
+     * User's profile picture URL (OIDC standard claim)
      */
-    @JsonProperty("image_url")
-    val imageUrl: String? = null
+    val picture: String? = null
 ) {
     companion object {
         fun inactive() = TokenIntrospectionResponse(active = false)

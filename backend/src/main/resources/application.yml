@@ -10,7 +10,7 @@ spring:
     resources:
       static-locations: classpath:/static/
       cache:
-        period: 1h
+        period: 30m
   mvc:
     static-path-pattern: /**
 

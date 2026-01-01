@@ -42,20 +42,52 @@ class UserService(
     fun findByProviderAndProviderId(provider: User.AuthProvider, providerId: String): User? =
         userRepository.findByProviderAndProviderId(provider, providerId)
 
+    /**
+     * Creates or updates a user with OIDC standard claims from OAuth2/OIDC provider.
+     */
     @Transactional
     fun createOrUpdateOAuth2User(
         email: String,
         name: String,
-        imageUrl: String?,
         provider: User.AuthProvider,
-        providerId: String
+        providerId: String,
+        givenName: String? = null,
+        familyName: String? = null,
+        middleName: String? = null,
+        nickname: String? = null,
+        preferredUsername: String? = null,
+        profile: String? = null,
+        picture: String? = null,
+        website: String? = null,
+        emailVerified: Boolean = false,
+        gender: String? = null,
+        birthdate: java.time.LocalDate? = null,
+        zoneinfo: String? = null,
+        locale: String? = null,
+        phoneNumber: String? = null,
+        phoneNumberVerified: Boolean = false
     ): User {
         val existingUser = findByProviderAndProviderId(provider, providerId)
 
         if (existingUser != null) {
+            // Update existing user with new data from provider
             existingUser.name = name
-            existingUser.imageUrl = imageUrl
             existingUser.email = email
+            existingUser.givenName = givenName ?: existingUser.givenName
+            existingUser.familyName = familyName ?: existingUser.familyName
+            existingUser.middleName = middleName ?: existingUser.middleName
+            existingUser.nickname = nickname ?: existingUser.nickname
+            existingUser.preferredUsername = preferredUsername ?: existingUser.preferredUsername
+            existingUser.profile = profile ?: existingUser.profile
+            existingUser.picture = picture ?: existingUser.picture
+            existingUser.website = website ?: existingUser.website
+            existingUser.emailVerified = emailVerified
+            existingUser.gender = gender ?: existingUser.gender
+            existingUser.birthdate = birthdate ?: existingUser.birthdate
+            existingUser.zoneinfo = zoneinfo ?: existingUser.zoneinfo
+            existingUser.locale = locale ?: existingUser.locale
+            existingUser.phoneNumber = phoneNumber ?: existingUser.phoneNumber
+            existingUser.phoneNumberVerified = phoneNumberVerified
             return userRepository.save(existingUser)
         }
 
@@ -65,9 +97,23 @@ class UserService(
         val newUser = User(
             email = email,
             name = name,
-            imageUrl = imageUrl,
             provider = provider,
             providerId = providerId,
+            givenName = givenName,
+            familyName = familyName,
+            middleName = middleName,
+            nickname = nickname,
+            preferredUsername = preferredUsername,
+            profile = profile,
+            picture = picture,
+            website = website,
+            emailVerified = emailVerified,
+            gender = gender,
+            birthdate = birthdate,
+            zoneinfo = zoneinfo,
+            locale = locale,
+            phoneNumber = phoneNumber,
+            phoneNumberVerified = phoneNumberVerified,
             roles = mutableSetOf(userRole)
         )
 

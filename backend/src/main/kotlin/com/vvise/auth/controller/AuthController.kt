@@ -150,7 +150,7 @@ class AuthController(
                     roles = claims["roles"] as? String,
                     exp = claims.expiration?.time?.div(1000),
                     iat = claims.issuedAt?.time?.div(1000),
-                    imageUrl = user?.imageUrl
+                    picture = user?.picture
                 )
             )
         } catch (e: Exception) {
