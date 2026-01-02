@@ -31,12 +31,13 @@ class ExampleController {
      * Uses @CurrentUser annotation to inject the authenticated user.
      */
     @GetMapping("/me")
-    fun getCurrentUser(@CurrentUser user: AuthenticatedUser): Map<String, Any> {
+    fun getCurrentUser(@CurrentUser user: AuthenticatedUser): Map<String, Any?> {
         return mapOf(
-            "id" to user.id,
+            "sub" to user.sub,
             "email" to user.email,
             "name" to user.name,
-            "roles" to user.roles
+            "roles" to user.roles,
+            "picture" to user.picture
         )
     }
 
@@ -56,11 +57,12 @@ class ExampleController {
      * Example of checking roles programmatically.
      */
     @GetMapping("/profile")
-    fun getProfile(@CurrentUser user: AuthenticatedUser): Map<String, Any> {
-        val profile = mutableMapOf<String, Any>(
-            "id" to user.id,
+    fun getProfile(@CurrentUser user: AuthenticatedUser): Map<String, Any?> {
+        val profile = mutableMapOf<String, Any?>(
+            "sub" to user.sub,
             "email" to user.email,
-            "name" to user.name
+            "name" to user.name,
+            "picture" to user.picture
         )
 
         // Add admin-specific data if user is admin
